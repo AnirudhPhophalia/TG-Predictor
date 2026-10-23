@@ -1,0 +1,264 @@
+// Thapar Grade Predictor - Prisma Schema
+// MongoDB Atlas datasource
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// User Model - Students and Admins
+model User {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  email             String    @unique
+  name              String?
+  studentId         String?
+  rollNumber        String?
+  branch            String?
+  semester          Int?
+  profileImage      String?
+  role              String    @default("student") // "student" or "admin"
+  verifiedAt        DateTime?
+  lastLogin         DateTime?
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  marks             Mark[]
+  editRequests      EditRequest[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  pollResponses     PollResponse[]
+}
+
+// Subject Model
+model Subject {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  code              String    @unique
+  name              String
+  semester          Int
+  branch            String
+  credits           Float
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  marks             Mark[]
+  statistics        Statistics?
+  historicalCutoffs HistoricalCutoff?
+  polls             Poll[]
+}
+
+// Semester Model
+model Semester {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  name              String    @unique // "Fall 2024", "Spring 2025"
+  startDate         DateTime
+  endDate           DateTime
+  isActive          Boolean   @default(false) // Only one semester active at a time
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+// Marks Submission Model
+model Mark {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String    @db.ObjectId
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId         String    @db.ObjectId
+  subject           Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
+  totalMarks        Float     @default(0) // 0-100, used for prediction
+  
+  // Internal breakdown (optional, for analysis only)
+  estMarks          Float?    @default(0) // 0-30
+  mstMarks          Float?    @default(0) // 0-40
+  quizMarks         Float?    @default(0) // 0-10
+  assignmentMarks   Float?    @default(0) // 0-20
+  labMarks          Float?    @default(0) // 0-20
+  practicalMarks    Float?    @default(0) // 0-20
+  
+  // Submission status
+  submittedAt       DateTime  @default(now())
+  isSubmitted       Boolean   @default(true)
+  isLocked          Boolean   @default(true)
+  
+  // Grade information
+  predictedGrade    String?
+  percentile        Float?
+  
+  // Audit trail
+  originalMarks     Float?
+  editHistory       EditHistory[]
+  
+  @@unique([userId, subjectId])
+  @@index([userId])
+  @@index([subjectId])
+}
+
+// Edit History - Audit trail for mark changes
+model EditHistory {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  markId            String    @db.ObjectId
+  mark              Mark      @relation(fields: [markId], references: [id], onDelete: Cascade)
+  
+  originalMarks     Float
+  updatedMarks      Float
+  reason            String
+  approvedAt        DateTime
+  createdAt         DateTime  @default(now())
+}
+
+// Edit Request - Student request to modify marks
+model EditRequest {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String    @db.ObjectId
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  markId            String    // Store mark ID as reference
+  newMarks          Float
+  reason            String
+  
+  status            String    @default("pending") // "pending", "approved", "rejected"
+  approvedBy        String?
+  approvedAt        DateTime?
+  rejectionReason   String?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+}
+
+// Statistics - Cached statistics for each subject
+model Statistics {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  subjectId         String    @unique @db.ObjectId
+  subject           Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
+  totalResponses    Int       @default(0)
+  averageMarks      Float     @default(0)
+  medianMarks       Float     @default(0)
+  modeMarks         Float?
+  highestMarks      Float?
+  lowestMarks       Float?
+  standardDeviation Float     @default(0)
+  
+  // Grade distribution
+  gradeA            Int       @default(0)
+  gradeAMinus       Int       @default(0)
+  gradeB            Int       @default(0)
+  gradeBMinus       Int       @default(0)
+  gradeC            Int       @default(0)
+  gradeD            Int       @default(0)
+  gradeE            Int       @default(0)
+  
+  passPercentage    Float     @default(0) // Percentage of students with grade >= D
+  failurePercentage Float     @default(0)
+  
+  // Percentile distribution (stored as JSON)
+  percentileData    String?   // JSON string storing percentile buckets
+  
+  lastUpdated       DateTime  @default(now()) @updatedAt
+}
+
+// Historical Cutoffs - Grade boundaries for fallback prediction
+model HistoricalCutoff {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  subjectId         String    @unique @db.ObjectId
+  subject           Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
+  cutoffA           Float     @default(85)
+  cutoffAMinus      Float     @default(75)
+  cutoffB           Float     @default(65)
+  cutoffBMinus      Float     @default(55)
+  cutoffC           Float     @default(45)
+  cutoffD           Float     @default(35)
+  // Grades below 35 are E
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+// Notifications
+model Notification {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String    @db.ObjectId
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type              String    // "submission_success", "edit_approved", "grade_activated", "announcement"
+  title             String
+  message           String
+  isRead            Boolean   @default(false)
+  relatedMarkId     String?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([isRead])
+}
+
+// Audit Logs - For security and compliance
+model AuditLog {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String    @db.ObjectId
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  action            String    // "mark_submitted", "mark_edited", "edit_requested", "edit_approved"
+  resourceType      String    // "mark", "subject", "user"
+  resourceId        String?
+  
+  changes           String?   // JSON string of what changed
+  ipAddress         String?
+  userAgent         String?
+  
+  createdAt         DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([action])
+}
+
+// Poll Model - Admin asks for marks
+model Poll {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  subjectId         String    @db.ObjectId
+  subject           Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
+  question          String    @default("How much marks did you get?")
+  endTime           DateTime
+  isActive          Boolean   @default(true)
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Custom manual cutoffs (optional)
+  cutoffA           Float?
+  cutoffAMinus      Float?
+  cutoffB           Float?
+  cutoffBMinus      Float?
+  cutoffC           Float?
+  cutoffD           Float?
+  
+  responses         PollResponse[]
+}
+
+// Poll Response
+model PollResponse {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  pollId            String    @db.ObjectId
+  poll              Poll      @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  
+  userId            String    @db.ObjectId
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  marks             Float
+  
+  submittedAt       DateTime  @default(now())
+  
+  @@unique([pollId, userId])
+}
