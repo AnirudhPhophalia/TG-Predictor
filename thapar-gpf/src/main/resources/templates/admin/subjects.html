@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Subjects')}"></head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+<div class="container">
+    <h1>Subjects</h1>
+    <div th:replace="~{layout :: flash}"></div>
+
+    <div class="card">
+        <h2 th:text="${editing != null} ? 'Edit subject' : 'Add subject'">Add subject</h2>
+        <form th:action="${editing != null} ? @{/admin/subjects/{id}(id=${editing.id})} : @{/admin/subjects}" method="post">
+            <label>Code</label>
+            <input type="text" name="code" th:value="${form.code()}" placeholder="UCS301" required>
+            <label>Name</label>
+            <input type="text" name="name" th:value="${form.name()}" placeholder="Data Structures" required>
+            <label>Semester (1-8)</label>
+            <input type="number" name="semester" min="1" max="8" th:value="${form.semester()}" required>
+            <label>Branch</label>
+            <input type="text" name="branch" th:value="${form.branch()}" placeholder="COE">
+            <label>Credits</label>
+            <input type="number" name="credits" min="1" max="10" th:value="${form.credits()}" required>
+            <button type="submit" th:text="${editing != null} ? 'Save changes' : 'Add subject'">Add subject</button>
+            <a class="button secondary" th:if="${editing != null}" th:href="@{/admin/subjects}">Cancel</a>
+        </form>
+    </div>
+
+    <table>
+        <tr><th>Code</th><th>Name</th><th>Sem</th><th>Branch</th><th>Credits</th><th>Status</th><th></th></tr>
+        <tr th:each="s : ${subjects}">
+            <td th:text="${s.code}">UCS301</td>
+            <td th:text="${s.name}">Data Structures</td>
+            <td th:text="${s.semester}">3</td>
+            <td th:text="${s.branch}">COE</td>
+            <td th:text="${s.credits}">4</td>
+            <td th:text="${s.active} ? 'Active' : 'Inactive'">Active</td>
+            <td>
+                <a th:href="@{/admin/subjects(edit=${s.id})}">Edit</a>
+                <form class="inline" th:action="@{/admin/subjects/{id}/toggle(id=${s.id})}" method="post">
+                    <button type="submit" class="secondary" th:text="${s.active} ? 'Deactivate' : 'Activate'">Toggle</button>
+                </form>
+            </td>
+        </tr>
+    </table>
+</div>
+</body>
+</html>

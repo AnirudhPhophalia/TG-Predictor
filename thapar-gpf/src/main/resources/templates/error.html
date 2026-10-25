@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Error')}"></head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+<div class="container">
+    <div class="card">
+        <h1>Something went wrong</h1>
+        <p><b th:text="${status}">400</b></p>
+        <p th:text="${message != null and message != ''} ? ${message} : ${error}">Error message</p>
+        <a class="button secondary" href="javascript:history.back()">Go back</a>
+        <a class="button" th:href="@{/}">Home</a>
+    </div>
+</div>
+</body>
+</html>

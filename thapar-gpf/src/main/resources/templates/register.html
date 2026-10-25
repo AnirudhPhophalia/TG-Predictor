@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Register')}"></head>
+<body>
+<div class="container login-box">
+    <div class="card">
+        <h1>Create account</h1>
+        <p class="muted">Only @thapar.edu emails are accepted.</p>
+        <div th:replace="~{layout :: flash}"></div>
+
+        <form th:action="@{/register}" method="post">
+            <label>Full name</label>
+            <input type="text" name="name" th:value="${form?.name()}" required>
+
+            <label>Email</label>
+            <input type="email" name="email" th:value="${form?.email()}" placeholder="you@thapar.edu" required>
+
+            <label>Password (min 6 characters)</label>
+            <input type="password" name="password" required>
+
+            <label>Roll number</label>
+            <input type="text" name="rollNumber" th:value="${form?.rollNumber()}">
+
+            <label>Branch</label>
+            <input type="text" name="branch" th:value="${form?.branch()}" placeholder="COE">
+
+            <label>Semester</label>
+            <input type="number" name="semester" min="1" max="8" th:value="${form?.semester()}">
+
+            <button type="submit">Register</button>
+        </form>
+        <p>Already have an account? <a th:href="@{/login}">Login</a></p>
+    </div>
+</div>
+</body>
+</html>
