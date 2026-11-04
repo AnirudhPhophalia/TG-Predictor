@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Cutoffs')}"></head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+<div class="container">
+    <h1>Fallback cutoffs</h1>
+    <p class="muted">Used to predict grades while a subject has fewer than 100 submissions. Marks must go strictly down from A to D. Marks below the D cutoff are an E.</p>
+    <div th:replace="~{layout :: flash}"></div>
+
+    <table>
+        <tr><th>Subject</th><th>A</th><th>A-</th><th>B</th><th>B-</th><th>C</th><th>D</th><th></th></tr>
+        <tr th:each="c : ${cutoffs}">
+            <form th:action="@{/admin/cutoffs/{id}(id=${c.subject.id})}" method="post">
+                <td th:text="${c.subject.code}">UCS301</td>
+                <td><input type="number" step="0.5" min="0" max="100" name="cutoffA" th:value="${c.cutoffA}"></td>
+                <td><input type="number" step="0.5" min="0" max="100" name="cutoffAMinus" th:value="${c.cutoffAMinus}"></td>
+                <td><input type="number" step="0.5" min="0" max="100" name="cutoffB" th:value="${c.cutoffB}"></td>
+                <td><input type="number" step="0.5" min="0" max="100" name="cutoffBMinus" th:value="${c.cutoffBMinus}"></td>
+                <td><input type="number" step="0.5" min="0" max="100" name="cutoffC" th:value="${c.cutoffC}"></td>
+                <td><input type="number" step="0.5" min="0" max="100" name="cutoffD" th:value="${c.cutoffD}"></td>
+                <td><button type="submit">Save</button></td>
+            </form>
+        </tr>
+    </table>
+</div>
+</body>
+</html>

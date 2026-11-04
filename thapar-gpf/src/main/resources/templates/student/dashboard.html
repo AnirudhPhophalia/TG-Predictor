@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Student Dashboard')}"></head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+<div class="container">
+    <h1>Welcome, <span th:text="${student.name}">Student</span></h1>
+    <div th:replace="~{layout :: flash}"></div>
+
+    <div class="card">
+        <h2>My submitted marks</h2>
+        <p class="muted" th:if="${rows.empty}">You have not submitted any marks yet. Pick a subject below.</p>
+        <table th:unless="${rows.empty}">
+            <tr>
+                <th>Subject</th><th>My marks</th><th>Predicted grade</th><th>Percentile</th>
+                <th>Class average</th><th>Responses</th><th>Status</th><th></th>
+            </tr>
+            <tr th:each="row : ${rows}">
+                <td th:text="${row.mark().subject.code} + ' - ' + ${row.mark().subject.name}">UCS301</td>
+                <td th:text="${row.mark().totalMarks}">0</td>
+                <td><b th:text="${row.mark().predictedGrade.label}">A</b></td>
+                <td th:text="${#numbers.formatDecimal(row.mark().percentile, 1, 1)} + '%'">0%</td>
+                <td th:text="${#numbers.formatDecimal(row.stats().average(), 1, 1)}">0</td>
+                <td th:text="${row.stats().totalResponses()}">0</td>
+                <td th:text="${row.mark().locked} ? 'Locked' : 'Unlocked'">Locked</td>
+                <td><a th:href="@{/student/marks/{id}(id=${row.mark().id})}">Details</a></td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Subjects open for submission</h2>
+        <p class="muted" th:if="${openSubjects.empty}">Nothing left to submit.</p>
+        <table th:unless="${openSubjects.empty}">
+            <tr><th>Code</th><th>Name</th><th>Responses so far</th><th>Class average</th><th></th></tr>
+            <tr th:each="s : ${openSubjects}">
+                <td th:text="${s.code()}">UCS301</td>
+                <td th:text="${s.name()}">Data Structures</td>
+                <td th:text="${s.totalResponses()}">0</td>
+                <td th:text="${s.totalResponses() > 0} ? ${#numbers.formatDecimal(s.average(), 1, 1)} : '-'">-</td>
+                <td><a class="button" th:href="@{/student/submit/{id}(id=${s.subjectId()})}">Submit marks</a></td>
+            </tr>
+        </table>
+    </div>
+
+    <p class="muted">Your marks are private. Admins and other students only ever see combined class statistics.</p>
+</div>
+</body>
+</html>

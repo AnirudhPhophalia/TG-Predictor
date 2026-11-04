@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Polls')}"></head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+<div class="container">
+    <h1>Open polls</h1>
+    <p class="muted">Answers are anonymous. Admins only see the combined statistics.</p>
+    <div th:replace="~{layout :: flash}"></div>
+
+    <p class="muted" th:if="${polls.empty}">No polls are open right now.</p>
+
+    <div class="card" th:each="poll : ${polls}">
+        <h3 th:text="${poll.subject.code} + ' - ' + ${poll.question}">Question</h3>
+        <p class="muted">Closes <span th:text="${#temporals.format(poll.endTime, 'dd MMM yyyy HH:mm')}">date</span></p>
+
+        <p th:if="${answered.contains(poll.id)}"><b>You have answered this poll. Thank you!</b></p>
+        <form th:unless="${answered.contains(poll.id)}" th:action="@{/student/polls/{id}/respond(id=${poll.id})}" method="post">
+            <label>Your marks (0 - 100)</label>
+            <input type="number" name="marks" step="0.01" min="0" max="100" required>
+            <button type="submit">Submit answer</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('My Marks')}"></head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+<div class="container">
+    <h1 th:text="${mark.subject.code} + ' - ' + ${mark.subject.name}">UCS301 - Data Structures</h1>
+    <div th:replace="~{layout :: flash}"></div>
+
+    <div class="cards">
+        <div class="card"><div class="muted">Predicted grade</div><div class="grade" th:text="${mark.predictedGrade.label}">A</div></div>
+        <div class="card"><div class="muted">My marks</div><div class="number" th:text="${mark.totalMarks}">0</div></div>
+        <div class="card"><div class="muted">Percentile</div><div class="number" th:text="${#numbers.formatDecimal(mark.percentile, 1, 1)} + '%'">0%</div></div>
+    </div>
+
+    <div class="card">
+        <h2>How was this predicted?</h2>
+        <p th:if="${stats.relativeGradingActive()}">
+            Relative grading is active: <b th:text="${stats.totalResponses()}">100</b> students submitted, so your grade
+            comes from your percentile in the class.
+        </p>
+        <p th:unless="${stats.relativeGradingActive()}">
+            Only <b th:text="${stats.totalResponses()}">0</b> of the 100 submissions needed for relative grading are in,
+            so the admin's historical cutoffs are used instead.
+        </p>
+        <p class="muted">Prediction confidence:
+            <b th:text="${stats.confidenceLabel()} + ' (' + ${stats.confidencePercent()} + '%)'">Low</b>.
+            Marks below 35 are always an E.</p>
+    </div>
+
+    <div class="card">
+        <h2>Class statistics</h2>
+        <table>
+            <tr><th>Responses</th><td th:text="${stats.totalResponses()}">0</td>
+                <th>Average</th><td th:text="${#numbers.formatDecimal(stats.average(), 1, 2)}">0</td></tr>
+            <tr><th>Median</th><td th:text="${#numbers.formatDecimal(stats.median(), 1, 2)}">0</td>
+                <th>Mode</th><td th:text="${#numbers.formatDecimal(stats.mode(), 1, 2)}">0</td></tr>
+            <tr><th>Highest</th><td th:text="${stats.highest()}">0</td>
+                <th>Lowest</th><td th:text="${stats.lowest()}">0</td></tr>
+            <tr><th>Standard deviation</th><td th:text="${#numbers.formatDecimal(stats.standardDeviation(), 1, 2)}">0</td>
+                <th>Pass / Fail</th><td th:text="${#numbers.formatDecimal(stats.passPercentage(), 1, 1)} + '% / ' + ${#numbers.formatDecimal(stats.failurePercentage(), 1, 1)} + '%'">0</td></tr>
+        </table>
+
+        <h3>Score distribution</h3>
+        <div class="bar-row" th:each="count, i : ${buckets}">
+            <span class="label" th:text="${i.index * 10} + '-' + ${i.index * 10 + 10}">0-10</span>
+            <div class="bar" th:style="'width:' + ${stats.totalResponses() == 0 ? 0 : count * 100 / stats.totalResponses() * 4} + 'px'"></div>
+            <span th:text="${count}">0</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>My breakdown</h2>
+        <table>
+            <tr><th>EST</th><th>MST</th><th>Quizzes</th><th>Assignments</th><th>Labs</th><th>Practical</th></tr>
+            <tr>
+                <td th:text="${mark.estMarks != null} ? ${mark.estMarks} : '-'">-</td>
+                <td th:text="${mark.mstMarks != null} ? ${mark.mstMarks} : '-'">-</td>
+                <td th:text="${mark.quizMarks != null} ? ${mark.quizMarks} : '-'">-</td>
+                <td th:text="${mark.assignmentMarks != null} ? ${mark.assignmentMarks} : '-'">-</td>
+                <td th:text="${mark.labMarks != null} ? ${mark.labMarks} : '-'">-</td>
+                <td th:text="${mark.practicalMarks != null} ? ${mark.practicalMarks} : '-'">-</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Need to change your marks?</h2>
+        <div th:if="${!mark.locked}">
+            <p>Your marks are unlocked.</p>
+            <a class="button" th:href="@{/student/submit/{id}(id=${mark.subject.id})}">Update Marks Now</a>
+        </div>
+        <div th:if="${mark.locked and hasPendingRequest}">
+            <p>Your unlock request is waiting for admin review.</p>
+            <a class="button secondary" th:href="@{/student/edit-requests}">View my requests</a>
+        </div>
+        <form th:if="${mark.locked and !hasPendingRequest}" th:action="@{/student/marks/{id}/unlock-request(id=${mark.id})}" method="post">
+            <p class="muted">Marks are locked after submission. The admin will see only your reason, never your marks.</p>
+            <label>Reason</label>
+            <textarea name="reason" rows="3" maxlength="500" placeholder="e.g. MST marks were re-evaluated" required></textarea>
+            <button type="submit">Request Unlock</button>
+        </form>
+    </div>
+
+    <a th:href="@{/student}">&larr; Back to dashboard</a>
+</div>
+</body>
+</html>
