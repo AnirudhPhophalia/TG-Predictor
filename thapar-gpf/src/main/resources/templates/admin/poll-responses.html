@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Poll Results')}"></head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+<div class="container">
+    <h1>Poll results</h1>
+    <p><b th:text="${summary.subjectCode()} + ' - ' + ${summary.question()}">question</b></p>
+    <p class="muted">Only combined numbers are shown. Individual answers are anonymous.</p>
+
+    <div class="card" th:if="${summary.hidden()}">
+        <b th:text="${summary.responses()}">0</b> response(s) so far. Results appear once at least 5 students have answered,
+        so that nobody's answer can be worked out from the numbers.
+    </div>
+
+    <div class="cards" th:unless="${summary.hidden()}">
+        <div class="card"><div class="number" th:text="${summary.responses()}">0</div>Responses</div>
+        <div class="card"><div class="number" th:text="${#numbers.formatDecimal(summary.average(), 1, 1)}">0</div>Average</div>
+        <div class="card"><div class="number" th:text="${#numbers.formatDecimal(summary.median(), 1, 1)}">0</div>Median</div>
+        <div class="card"><div class="number" th:text="${summary.highest()}">0</div>Highest</div>
+        <div class="card"><div class="number" th:text="${summary.lowest()}">0</div>Lowest</div>
+    </div>
+
+    <div class="card" th:unless="${summary.hidden()}">
+        <h2>Distribution</h2>
+        <div class="bar-row" th:each="count, i : ${summary.buckets()}">
+            <span class="label" th:text="${i.index * 10} + '-' + ${i.index * 10 + 10}">0-10</span>
+            <div class="bar" th:style="'width:' + ${summary.responses() == 0 ? 0 : count * 400 / summary.responses()} + 'px'"></div>
+            <span th:text="${count}">0</span>
+        </div>
+    </div>
+    <a th:href="@{/admin/polls}">&larr; Back to polls</a>
+</div>
+</body>
+</html>

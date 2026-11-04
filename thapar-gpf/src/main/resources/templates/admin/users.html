@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Users')}"></head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+<div class="container">
+    <h1>Users</h1>
+    <div th:replace="~{layout :: flash}"></div>
+
+    <table>
+        <tr><th>Name</th><th>Email</th><th>Roll no.</th><th>Branch</th><th>Sem</th><th>Role</th><th>Joined</th><th></th></tr>
+        <tr th:each="u : ${users}">
+            <td th:text="${u.name()}">Name</td>
+            <td th:text="${u.email()}">email</td>
+            <td th:text="${u.rollNumber()}">roll</td>
+            <td th:text="${u.branch()}">COE</td>
+            <td th:text="${u.semester()}">5</td>
+            <td th:text="${u.role()}">STUDENT</td>
+            <td th:text="${#temporals.format(u.createdAt(), 'dd MMM yyyy')}">date</td>
+            <td>
+                <form class="inline" th:if="${u.role().name() == 'STUDENT'}" th:action="@{/admin/users/{id}/role(id=${u.id()})}" method="post">
+                    <input type="hidden" name="role" value="ADMIN">
+                    <button type="submit">Promote to admin</button>
+                </form>
+                <form class="inline" th:if="${u.role().name() == 'ADMIN'}" th:action="@{/admin/users/{id}/role(id=${u.id()})}" method="post">
+                    <input type="hidden" name="role" value="STUDENT">
+                    <button type="submit" class="secondary">Demote to student</button>
+                </form>
+            </td>
+        </tr>
+    </table>
+    <p class="muted">Marks are private to each student and are not available here.</p>
+</div>
+</body>
+</html>

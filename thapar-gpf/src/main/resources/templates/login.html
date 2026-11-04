@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Login')}"></head>
+<body>
+<div class="container login-box">
+    <div class="card">
+        <h1>Login</h1>
+        <p class="muted">Use your official @thapar.edu email.</p>
+
+        <div class="failure" th:if="${param.error}">Wrong email or password.</div>
+        <div class="success" th:if="${param.logout}">You have been logged out.</div>
+        <div th:replace="~{layout :: flash}"></div>
+
+        <form th:action="@{/login}" method="post">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="you@thapar.edu" required>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+
+            <button type="submit">Login</button>
+        </form>
+        <p>New student? <a th:href="@{/register}">Create an account</a></p>
+    </div>
+</div>
+</body>
+</html>

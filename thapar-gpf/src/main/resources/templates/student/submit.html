@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Submit Marks')}"></head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+<div class="container">
+    <h1>Submit marks</h1>
+    <p><b th:text="${subject.code} + ' - ' + ${subject.name}">UCS301 - Data Structures</b></p>
+    <div th:replace="~{layout :: flash}"></div>
+
+    <div class="card">
+        <p class="muted" th:if="${updating}">Your marks were unlocked by the admin. Enter the corrected values; they will be locked again when you save.</p>
+        <p class="muted" th:unless="${updating}">You can submit only once. To change marks later you must send an unlock request.</p>
+
+        <form th:action="@{/student/submit/{id}(id=${subject.id})}" method="post">
+            <label>Total marks (0 - 100) *</label>
+            <input type="number" name="totalMarks" step="0.01" min="0" max="100" required
+                   th:value="${form?.totalMarks()}">
+
+            <h3>Optional breakdown</h3>
+            <label>End semester exam - EST (0 - 30)</label>
+            <input type="number" name="estMarks" step="0.01" min="0" max="30" th:value="${form?.estMarks()}">
+
+            <label>Mid semester exam - MST (0 - 40)</label>
+            <input type="number" name="mstMarks" step="0.01" min="0" max="40" th:value="${form?.mstMarks()}">
+
+            <label>Quizzes (0 - 10)</label>
+            <input type="number" name="quizMarks" step="0.01" min="0" max="10" th:value="${form?.quizMarks()}">
+
+            <label>Assignments (0 - 20)</label>
+            <input type="number" name="assignmentMarks" step="0.01" min="0" max="20" th:value="${form?.assignmentMarks()}">
+
+            <label>Lab experiments (0 - 20)</label>
+            <input type="number" name="labMarks" step="0.01" min="0" max="20" th:value="${form?.labMarks()}">
+
+            <label>Practical exam (0 - 20)</label>
+            <input type="number" name="practicalMarks" step="0.01" min="0" max="20" th:value="${form?.practicalMarks()}">
+
+            <button type="submit">Save and lock</button>
+            <a class="button secondary" th:href="@{/student}">Cancel</a>
+        </form>
+    </div>
+</div>
+</body>
+</html>
