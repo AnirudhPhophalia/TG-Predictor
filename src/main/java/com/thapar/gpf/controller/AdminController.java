@@ -20,7 +20,6 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 
 /**
@@ -40,6 +39,8 @@ public class AdminController {
     private final com.thapar.gpf.service.CutoffHistoryService history;
     @org.springframework.beans.factory.annotation.Autowired
     private com.thapar.gpf.service.SettingsService settings;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.thapar.gpf.service.StatisticsExportService exports;
     @org.springframework.beans.factory.annotation.Value("${gpf.admin.email:admin@thapar.edu}")
     private String adminEmail;
 
@@ -69,12 +70,12 @@ public class AdminController {
     }
 
     @GetMapping("/export")
-    public ResponseEntity<byte[]> export() {
-        byte[] csv = analyticsService.buildStatisticsCsv().getBytes(StandardCharsets.UTF_8);
+    public ResponseEntity<byte[]> export(@RequestParam(defaultValue = "csv") String format) {
+        var download = exports.export(format);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"subject-statistics.csv\"")
-                .contentType(MediaType.parseMediaType("text/csv"))
-                .body(csv);
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"subject-statistics." + download.extension() + "\"")
+                .contentType(MediaType.parseMediaType(download.contentType()))
+                .body(download.bytes());
     }
 
     // ---------- subjects ----------

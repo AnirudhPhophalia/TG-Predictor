@@ -54,7 +54,7 @@
         </ul>
     </div>
 
-    <a class="button secondary" th:href="@{/admin/export}">Export subject statistics (CSV)</a>
+    <div class="export-actions"><a class="button secondary" th:href="@{/admin/export(format='csv')}">CSV</a> <a class="button secondary" th:href="@{/admin/export(format='excel')}">Excel</a> <a class="button secondary" th:href="@{/admin/export(format='pdf')}">PDF</a></div>
 </main>
 <div th:replace="~{layout :: footer}"></div></body>
 </html>

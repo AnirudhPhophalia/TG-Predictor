@@ -66,7 +66,7 @@ Prisma is an ORM, not a database. The original `prisma/schema.prisma` targets Mo
 - Mean, median, mode, standard deviation, pass/fail rates, contribution indicator, grade counts and score histograms.
 - Admin subject creation, editing and activation; persistent **year-labelled cutoff records**, optional activation and immediate prediction refresh.
 - Subject polls with deadlines, one answer per student, personal predictions, independent manual poll cutoffs and anonymous admin distributions.
-- Admin community metadata, unlock review, aggregate analytics and CSV export.
+- Admin community metadata, unlock review, aggregate analytics and genuine CSV, Excel (XLSX) and PDF exports.
 - Persistent maintenance and unlock-request settings. Maintenance pauses marks and poll submissions without hiding existing records.
 - Responsive UI, CSS animations, reduced-motion preferences, keyboard focus states and accessible form labels.
 

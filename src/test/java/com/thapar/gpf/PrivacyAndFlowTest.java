@@ -311,4 +311,35 @@ class PrivacyAndFlowTest {
         mvc.perform(get("/student").with(student).param("semester", "7"))
                 .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(SECRET))));
     }
+
+    @Test
+    @Order(13)
+    void excelAndPdfExportsAreValidAndSuppressPrivateSmallCohorts() throws Exception {
+        var admin = user("admin@thapar.edu").roles("ADMIN");
+        byte[] excel = mvc.perform(get("/admin/export").param("format", "excel").with(admin))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .andReturn().getResponse().getContentAsByteArray();
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(excel))) {
+            var sheet = workbook.getSheetAt(0);
+            assertEquals(subjectRepository.count(), sheet.getLastRowNum());
+            var rows = java.util.stream.StreamSupport.stream(sheet.spliterator(), false);
+            var subject = rows.filter(r -> r.getCell(0).getStringCellValue().equals("UCS301")).findFirst().orElseThrow();
+            assertEquals(2.0, subject.getCell(2).getNumericCellValue());
+            assertNull(subject.getCell(3), "Small-cohort averages must be omitted from spreadsheets");
+        }
+        byte[] pdf = mvc.perform(get("/admin/export").param("format", "pdf").with(admin))
+                .andExpect(status().isOk()).andExpect(content().contentType("application/pdf"))
+                .andReturn().getResponse().getContentAsByteArray();
+        try (var document = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+            assertTrue(document.getNumberOfPages() >= 3);
+            String text = new org.apache.pdfbox.text.PDFTextStripper().getText(document);
+            assertTrue(text.contains("UCS301"));
+            assertFalse(text.contains("80.50"));
+            assertFalse(text.contains("Aarav"));
+        }
+        mvc.perform(get("/admin/export").param("format", "unknown").with(admin)).andExpect(status().isBadRequest());
+        mvc.perform(get("/admin/export").param("format", "pdf").with(user("aarav@thapar.edu").roles("STUDENT")))
+                .andExpect(status().isForbidden());
+    }
 }
