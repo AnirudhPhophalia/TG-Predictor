@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Analytics')}"></head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+<main id="main" class="container">
+    <h1>Analytics</h1>
+
+    <div class="cards">
+        <div class="card"><div class="number" th:text="${report.totalUsers()}">0</div>Users</div>
+        <div class="card"><div class="number" th:text="${report.totalSubmissions()}">0</div>Submissions</div>
+        <div class="card"><div class="number" th:text="${#numbers.formatDecimal(report.overallPassPercentage(), 1, 1)} + '%'">0%</div>Overall pass rate</div>
+    </div>
+
+    <div class="card">
+        <h2>Grade distribution (all subjects)</h2>
+        <div class="table-scroll"><table>
+            <tr><th>A</th><th>A-</th><th>B</th><th>B-</th><th>C</th><th>D</th><th>E</th></tr>
+            <tr><td th:each="n : ${report.gradeTotals()}" th:text="${n}">0</td></tr>
+        </table></div>
+    </div>
+
+    <div class="card">
+        <h2>Pass / fail by subject</h2>
+        <p class="muted">To protect students, numbers are hidden for subjects with fewer than 5 responses.</p>
+        <div class="table-scroll"><table>
+            <tr><th>Subject</th><th>Responses</th><th>Average</th><th>Median</th><th>Std dev</th><th>Pass %</th><th>Fail %</th></tr>
+            <tr th:each="s : ${report.subjectStats()}">
+                <td th:text="${s.code()} + ' - ' + ${s.name()}">UCS301</td>
+                <td th:text="${s.totalResponses()}">0</td>
+                <td th:text="${s.hidden()} ? '-' : ${#numbers.formatDecimal(s.average(), 1, 1)}">0</td>
+                <td th:text="${s.hidden()} ? '-' : ${#numbers.formatDecimal(s.median(), 1, 1)}">0</td>
+                <td th:text="${s.hidden()} ? '-' : ${#numbers.formatDecimal(s.standardDeviation(), 1, 1)}">0</td>
+                <td th:text="${s.hidden()} ? '-' : ${#numbers.formatDecimal(s.passPercentage(), 1, 1)}">0</td>
+                <td th:text="${s.hidden()} ? '-' : ${#numbers.formatDecimal(s.failurePercentage(), 1, 1)}">0</td>
+            </tr>
+        </table></div>
+    </div>
+
+    <div class="card">
+        <h2>Top performing subjects (by class average)</h2>
+        <p class="muted" th:if="${report.topSubjects().empty}">No submissions yet.</p>
+        <ol>
+            <li th:each="s : ${report.topSubjects()}"
+                th:text="${s.code()} + ' - ' + ${s.name()} + ': ' + ${#numbers.formatDecimal(s.average(), 1, 1)}">UCS301</li>
+        </ol>
+    </div>
+
+    <div class="card">
+        <h2>Recent submission activity</h2>
+        <p class="muted" th:if="${report.recentSubmissionTimes().empty}">No activity yet.</p>
+        <ul>
+            <li th:each="t : ${report.recentSubmissionTimes()}" th:text="${#temporals.format(t, 'dd MMM yyyy HH:mm')} + ' - marks submitted'">time</li>
+        </ul>
+    </div>
+
+    <a class="button secondary" th:href="@{/admin/export}">Export subject statistics (CSV)</a>
+</main>
+<div th:replace="~{layout :: footer}"></div></body>
+</html>

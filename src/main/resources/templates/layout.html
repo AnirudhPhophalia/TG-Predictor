@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#432e22"><meta name="description" content="Private academic insights for Thapar students. Understand your marks, explore your cohort and predict your grades.">
+<title th:text="${title} + ' | Thapar Grade Predictor'">Thapar Grade Predictor</title>
+<link rel="icon" th:href="@{/images/book.svg}" type="image/svg+xml"><link rel="stylesheet" th:href="@{/css/main.css}">
+</head><body>
+<header th:fragment="navbar" class="site-header">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="header-inner"><a th:href="@{/}" class="brand"><span class="brand-symbol">GP</span><span>Grade Predictor<small>THAPAR INSTITUTE</small></span></a>
+<nav aria-label="Main navigation" class="main-nav">
+<th:block sec:authorize="hasRole('STUDENT')"><a th:href="@{/student}">Overview</a><a th:href="@{/student/subjects}">Subjects</a><a th:href="@{/student/polls}">Polls</a><a th:href="@{/student/edit-requests}">Requests</a><a th:href="@{/student/profile}">Profile</a><a th:href="@{/student/help}">Help</a></th:block>
+<th:block sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin}">Overview</a><a th:href="@{/admin/subjects}">Subjects</a><a th:href="@{/admin/cutoffs}">Cutoffs</a><a th:href="@{/admin/users}">Users</a><a th:href="@{/admin/edit-requests}">Requests</a><a th:href="@{/admin/polls}">Polls</a><a th:href="@{/admin/analytics}">Analytics</a><a th:href="@{/admin/settings}">Settings</a></th:block>
+</nav><form th:action="@{/logout}" method="post" class="logout"><button type="submit" class="header-button">Sign out</button></form></div>
+</header>
+<div th:fragment="flash" aria-live="polite"><div class="success" th:if="${success}" th:text="${success}"></div><div class="failure" th:if="${failure}" th:text="${failure}"></div><div class="failure" th:if="${errors}"><ul><li th:each="e : ${errors}" th:text="${e}"></li></ul></div></div>
+<footer th:fragment="footer" class="site-footer"><span>Thapar Grade Predictor</span><span>Built for clarity. Designed for privacy.</span><span>Student initiative · Estimates, not official results</span></footer>
+</body></html>

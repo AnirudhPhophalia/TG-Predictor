@@ -1,408 +1,110 @@
 # Thapar Grade Predictor
 
-A production-ready grade prediction platform for Thapar Institute of Engineering and Technology students. Predicts student grades based on percentile ranking and comparative performance analysis.
+A Java 21 / Spring Boot application for Thapar students, with Thymeleaf pages, Spring Security Google OIDC login, Spring Data JPA and a persistent database. There is no React, Next.js, Node.js or frontend build pipeline.
 
-![Build Status](https://img.shields.io/badge/status-production--ready-green)
-![License](https://img.shields.io/badge/license-proprietary-red)
-![Next.js](https://img.shields.io/badge/Next.js-16-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)
-![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green)
+The interface follows the cream, brown and gold palette in `References/`, with responsive layouts, animated headings, scrolling text, distribution graphics and reduced-motion support.
+
+## Run a local demo
+
+Install a **full JDK 21**. Maven is downloaded automatically by the included Maven Wrapper on the first run.
+
+```sh
+./run.sh demo
+```
+
+Windows: `run.cmd demo`. Open http://localhost:8080 and expand **Local demo sign-in**.
+
+| Account | Email | Password |
+| --- | --- | --- |
+| Student | aarav@thapar.edu | student123 |
+| Student with detected admission year | anirudh_be_24@thapar.edu | student123 |
+| Administrator | admin@thapar.edu | admin123 |
+
+Demo data lives separately in `data/demo-grade-predictor.mv.db`. It includes 120 clearly named synthetic students for UCS301. Demo login and registration are disabled outside the demo profile. Never use the demo profile for a live deployment. Start the demo on a fresh demo database to populate its sample data.
+
+## Enable real institute Google login
+
+1. Create a Google Cloud OAuth client with application type **Web application**. Configure the Google consent screen for the institute, or add permitted test users while it is in testing.
+2. Add `http://localhost:8080/login/oauth2/code/google` as an authorised redirect URI. Add the equivalent HTTPS URI for your deployment.
+3. Copy `.env.example` to `.env`. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and the single `ADMIN_EMAIL` (default `admin@thapar.edu`). All accounts, including the admin, must belong to `@thapar.edu`.
+4. For local H2, remove `DB_URL`, `DB_USER` and `DB_PASSWORD` from `.env`. Run `./run.sh`.
+
+The shell launcher loads `.env`; it is a local shell configuration file. For Windows or a direct `java -jar` launch, provide the same values as environment variables. `run.cmd` uses variables already set in its shell; it does not load `.env`.
+
+Google OIDC verifies the signed ID token, issuer, audience, nonce and OAuth state. The application then requires `email_verified=true`, the exact `@thapar.edu` domain and the Google hosted-domain claim `hd=thapar.edu`. A lookalike domain or a user-supplied email field cannot grant access. Google credentials are not included in this repository, and live Google sign-in needs your own client configuration.
+
+Admission years are derived from local email portions such as `name_be_24` → 2024, `name.be_25` → 2025 and `be24` → 2024. Unrecognised formats remain blank rather than guessing. Only the configured email receives ADMIN access; promotion of other accounts is rejected. Changing ADMIN_EMAIL takes effect on new sign-ins; restart the application to invalidate existing in-memory sessions.
+
+## Database
+
+The default database is a **persistent H2 file** at `data/grade-predictor.mv.db`. Student marks, users, polls, unlock requests, settings, active cutoffs and past-year cutoff records survive restarts. No live users or marks are seeded outside demo mode; only sample curriculum subjects and estimated fallback boundaries are created.
+
+For PostgreSQL, set `DB_URL` (a JDBC URL), `DB_USER` and `DB_PASSWORD`, then run:
+
+```sh
+./run.sh postgres
+```
+
+Or use Docker after filling `.env`:
+
+```sh
+docker compose up --build
+```
+
+The Compose database uses a persistent volume. `SECURE_COOKIES=false` supports local HTTP; use `true` behind HTTPS in production. Configure trusted reverse-proxy forwarding in your hosting environment if TLS terminates before the application. Back up the database before upgrades. Hibernate creates/updates tables for development; use reviewed schema migrations for managed production deployments.
+
+### Prisma source database
+
+Prisma is an ORM, not a database. The original `prisma/schema.prisma` targets MongoDB and generates a JavaScript client. Its schema is retained at `docs/legacy-mongodb-schema.prisma` for migration reference. Because Prisma has no official Java client, this implementation uses JPA for the requested Java-only runtime. It does **not** connect to or silently migrate the legacy MongoDB database. See [database migration](docs/database-migration.md) for the mapping and limitations. Actual legacy records and database credentials were not supplied.
 
 ## Features
 
-### Student Features
-- ✅ Secure Google OAuth authentication (Thapar domain restricted)
-- ✅ One-time marks submission per subject
-- ✅ Grade prediction based on percentile ranking
-- ✅ Historical grade boundaries fallback
-- ✅ Real-time statistics and analytics
-- ✅ Comparative performance analysis
-- ✅ Internal marks breakdown tracking
-- ✅ Edit request workflow for mark modifications
-- ✅ In-app notifications and email alerts
-- ✅ Detailed statistical visualizations
+- Verified institute Google login, admission-year detection, single-email admin access and student profile updates.
+- Search and semester filtering for subjects and personal submissions.
+- One submission per student/subject, optional component marks, immediate locking and an admin-reviewed unlock flow.
+- Relative grading at 100 submissions, strict-lower percentile ranking, historical fallback and unconditional failure below 35.
+- Mean, median, mode, standard deviation, pass/fail rates, contribution indicator, grade counts and score histograms.
+- Admin subject creation, editing and activation; persistent **year-labelled cutoff records**, optional activation and immediate prediction refresh.
+- Subject polls with deadlines, one answer per student, personal predictions, independent manual poll cutoffs and anonymous admin distributions.
+- Admin community metadata, unlock review, aggregate analytics and CSV export.
+- Persistent maintenance and unlock-request settings. Maintenance pauses marks and poll submissions without hiding existing records.
+- Responsive UI, CSS animations, reduced-motion preferences, keyboard focus states and accessible form labels.
 
-### Admin Features
-- ✅ Subject and curriculum management
-- ✅ Grade cutoff configuration
-- ✅ Edit request approval/rejection
-- ✅ User account management
-- ✅ System-wide analytics dashboard
-- ✅ Comprehensive audit logging
-- ✅ Data export (CSV, Excel, PDF)
-- ✅ Statistics caching and optimization
+Past-year records start empty. The default grade boundaries are estimates, not verified Thapar results. Enter verified records through **Admin → Grade cutoffs** and select **Use these boundaries for predictions** when appropriate. Saving another year does not overwrite other years. Saving the same subject/year updates that record.
 
-### Technical Features
-- ✅ Multi-role access control
-- ✅ Audit trail logging
-- ✅ Advanced grade prediction engine
-- ✅ Statistical analysis (median, mode, std dev, percentiles)
-- ✅ Responsive design (mobile-first)
-- ✅ Ancient parchment academic theme
-- ✅ Real-time data visualization with Recharts
-- ✅ RESTful API with validation
+## Privacy
 
-## Tech Stack
+Students can view their own marks. Admin routes cannot load individual student submissions; analytics and exports expose aggregates, with suppression below five responses. Unlock review includes a name, subject and reason, not the marks. Database operators still have database-level access; this is application-level access control, not encryption or a cryptographic zero-knowledge system. With small cohorts, student-facing class statistics may also allow inferences.
 
-### Frontend
-- **Framework**: Next.js 16 with App Router
-- **Language**: TypeScript 5.7
-- **UI Framework**: ShadCN UI
-- **Styling**: Tailwind CSS v4
-- **State Management**: SWR for data fetching
-- **Charts**: Recharts
-- **Authentication**: NextAuth.js
-- **Fonts**: Playfair Display (headings), Crimson Text (body)
+Predictions are community estimates and are not official results. The contribution indicator reaches 100% at 100 submissions; it is not a probability of prediction accuracy. Grade-point averages on the overview are unweighted estimates, not official CGPA.
 
-### Backend
-- **Runtime**: Node.js 18+
-- **Framework**: Next.js 16 (Route Handlers)
-- **Database**: MongoDB Atlas
-- **ORM**: Prisma
-- **Validation**: Zod
-- **Authentication**: NextAuth.js with Google OAuth
+## Build and test
 
-### DevOps
-- **Hosting**: Vercel (Frontend + API)
-- **Database Hosting**: MongoDB Atlas
-- **Package Manager**: pnpm
-
-## Project Structure
-
-```
-thapar-grade-predictor/
-├── app/                          # Next.js app directory
-│   ├── api/                      # API route handlers
-│   │   ├── auth/                 # NextAuth routes
-│   │   ├── admin/                # Admin API endpoints
-│   │   └── student/              # Student API endpoints
-│   ├── admin/                    # Admin pages
-│   ├── student/                  # Student pages
-│   ├── login/                    # Login page
-│   ├── layout.tsx                # Root layout with SessionProvider
-│   ├── page.tsx                  # Home page (redirects to dashboard)
-│   ├── globals.css               # Global styles & theme
-│   └── providers.tsx             # NextAuth provider wrapper
-├── lib/
-│   ├── auth.ts                   # NextAuth configuration
-│   ├── auth-utils.ts             # Authentication utilities
-│   ├── services/
-│   │   ├── db.ts                 # Database utility functions
-│   │   └── grade-predictor.ts    # Grade prediction engine
-│   ├── utils.ts                  # Utility functions
-│   └── generated/prisma.ts       # Prisma client (generated)
-├── prisma/
-│   ├── schema.prisma             # Database schema (10+ models)
-│   └── seed.ts                   # Database seed script
-├── public/                       # Static assets
-├── components/ui/               # ShadCN UI components
-├── middleware.ts                 # Next.js middleware
-├── DEPLOYMENT.md                 # Deployment guide
-├── README.md                     # This file
-├── next.config.mjs              # Next.js config
-├── tsconfig.json                # TypeScript config
-└── package.json                 # Dependencies
-
+```sh
+./build.sh
+./mvnw test
+java -jar target/thapar-gpf-1.0.0.jar
 ```
 
-## Database Schema
+`build.sh` runs the tests and packages an executable JAR. The tests cover grade boundaries, the 100-response transition, statistics, role separation, mark ownership, locking and unlock review, poll privacy, Google identity validation, admission years, single-admin enforcement, year records, manual poll cutoffs and maintenance settings. GitHub Actions runs Maven verification for pushes and pull requests.
 
-### Core Models
-- **User**: Students and admins
-- **Subject**: Courses/subjects
-- **Semester**: Academic periods
-- **Mark**: Mark submissions (unique per student-subject)
-- **Statistics**: Cached statistics per subject
-- **HistoricalCutoff**: Grade boundaries per subject
-- **EditRequest**: Mark modification workflow
-- **EditHistory**: Audit trail for mark changes
-- **Notification**: User notifications
-- **AuditLog**: System audit trail
+## Project structure
 
-## Getting Started
-
-### Prerequisites
-- Node.js 18+
-- MongoDB Atlas account
-- Google OAuth credentials
-- pnpm (recommended) or npm
-
-### Installation
-
-1. **Clone repository**
-```bash
-git clone <repo-url>
-cd thapar-grade-predictor
+```text
+src/main/java/com/thapar/gpf/
+  config/        Google OIDC, session security and demo initialisation
+  controller/    authentication, student pages and admin pages
+  dto/           validated form records and aggregate views
+  exception/     controlled errors
+  model/         persistent entities and enums
+  repository/    Spring Data JPA repositories
+  service/       prediction, privacy, marks, polls, history and settings
+src/main/resources/
+  templates/     server-rendered Thymeleaf pages
+  static/        CSS and SVG assets
+src/test/        unit and integration tests
+References/      original UI screenshots
+docs/           legacy schema and migration notes
 ```
 
-2. **Install dependencies**
-```bash
-pnpm install
-```
-
-3. **Setup environment variables**
-```bash
-cp .env.example .env.local
-# Edit .env.local with your credentials
-```
-
-4. **Initialize database**
-```bash
-# Generate Prisma Client
-pnpm db:generate
-
-# Push schema to MongoDB
-pnpm db:push
-
-# Seed initial data (optional)
-pnpm db:seed
-```
-
-5. **Start development server**
-```bash
-pnpm dev
-```
-
-Visit http://localhost:3000
-
-## Environment Variables
-
-Create `.env.local`:
-
-```bash
-# Database
-DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/database
-
-# NextAuth
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=$(openssl rand -base64 32)
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your-client-id
-GOOGLE_CLIENT_SECRET=your-client-secret
-
-# Email (optional)
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASSWORD=your-app-password
-EMAIL_FROM=noreply@thapar-grade-predictor.com
-
-# Application
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api
-THAPAR_EMAIL_DOMAIN=thapar.edu
-MINIMUM_SUBMISSIONS_FOR_PREDICTION=100
-```
-
-## Grade Prediction Algorithm
-
-### Percentile-Based Prediction (When ≥100 submissions)
-```
-Top 10% (90-100 percentile)     → Grade A
-10-20% (80-90 percentile)       → Grade A-
-20-45% (55-80 percentile)       → Grade B
-45-70% (30-55 percentile)       → Grade B-
-70-80% (20-30 percentile)       → Grade C
-80-100% (0-20 percentile)       → Grade D
-Marks < 35 (always)             → Grade E
-```
-
-### Historical Cutoff Fallback (When <100 submissions)
-```
-Marks ≥ 85 → A
-Marks ≥ 75 → A-
-Marks ≥ 65 → B
-Marks ≥ 55 → B-
-Marks ≥ 45 → C
-Marks ≥ 35 → D
-Marks < 35 → E
-```
-
-## API Endpoints
-
-### Authentication
-- `GET/POST /api/auth/[...nextauth]` - NextAuth routes
-
-### Public
-- `GET /api/subjects` - List active subjects
-
-### Student
-- `GET /api/student/marks` - Get student marks
-- `POST /api/student/marks` - Submit marks
-- `GET /api/student/statistics/[subjectId]` - Get subject statistics
-- `POST /api/student/marks/[id]/edit-request` - Request mark edit
-
-### Admin (Protected)
-- `GET /api/admin/subjects` - List all subjects
-- `POST /api/admin/subjects` - Create subject
-- `GET /api/admin/statistics` - System statistics
-- `GET /api/admin/edit-requests` - Edit requests
-- `POST /api/admin/edit-requests/[id]/approve` - Approve edit
-- `GET /api/admin/users` - List users
-- `GET /api/admin/audit-logs` - Audit logs
-
-## Deployment
-
-### Quick Deploy to Vercel
-
-```bash
-# 1. Push to GitHub
-git add .
-git commit -m "Initial commit"
-git push origin main
-
-# 2. Import in Vercel
-# Go to vercel.com/new and select GitHub repository
-
-# 3. Set environment variables in Vercel dashboard
-
-# 4. Deploy
-```
-
-### Full Deployment Guide
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions.
-
-## Development
-
-### Database Commands
-```bash
-# Generate Prisma Client
-pnpm db:generate
-
-# Push schema to database
-pnpm db:push
-
-# Reset database (careful!)
-pnpm prisma migrate reset
-
-# Seed data
-pnpm db:seed
-
-# Open Prisma Studio
-pnpm prisma studio
-```
-
-### Code Quality
-```bash
-# Lint
-pnpm lint
-
-# Type check
-pnpm tsc --noEmit
-```
-
-## Testing the Application
-
-### Test Login
-1. Visit http://localhost:3000
-2. Click "Continue with Google"
-3. Use a test @thapar.edu email (or configure for your domain)
-
-### Test Marks Submission
-1. Log in as a student
-2. Click "Submit Marks" on a subject
-3. Enter marks (0-100)
-4. Submit
-
-### Test Admin Features
-1. Set user role to 'admin' in database
-2. Visit /admin
-3. Manage subjects, cutoffs, and requests
-
-## Performance Optimization
-
-### Implemented
-- [x] SWR caching with revalidation
-- [x] Prisma query optimization
-- [x] Database indexing on frequently queried fields
-- [x] CSS optimization with Tailwind
-- [x] Image optimization
-- [x] Statistics caching
-
-### Recommendations
-- [ ] Implement Redis for statistics caching
-- [ ] Add API rate limiting
-- [ ] Implement pagination for large datasets
-- [ ] Use database views for complex queries
-- [ ] CDN for static assets (Vercel Edge)
-
-## Security
-
-### Implemented
-- ✅ Domain-restricted authentication (@thapar.edu)
-- ✅ JWT session management
-- ✅ HTTPS/TLS enforced
-- ✅ CSRF protection via NextAuth
-- ✅ Input validation with Zod
-- ✅ Row-level access control
-- ✅ Comprehensive audit logging
-- ✅ Secure password handling
-
-### Best Practices
-- Rotate NEXTAUTH_SECRET regularly
-- Keep dependencies updated
-- Monitor audit logs
-- Enable database backups
-- Use strong database credentials
-
-## Troubleshooting
-
-### Common Issues
-
-**Google OAuth Error**
-- Verify redirect URIs in Google Cloud Console
-- Clear browser cookies
-- Check GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
-
-**Database Connection**
-- Test MongoDB connection string
-- Verify IP whitelist in MongoDB Atlas
-- Check network connectivity
-
-**Prisma Errors**
-```bash
-# Clear Prisma cache
-rm -rf node_modules/.prisma
-
-# Regenerate
-pnpm db:generate
-```
-
-## Contributing
-
-This is a proprietary project for Thapar Institute. For contributions, please follow:
-1. Create feature branches
-2. Follow TypeScript and Prettier standards
-3. Add tests for new features
-4. Update documentation
-5. Submit pull request for review
-
-## Support
-
-For issues or questions:
-1. Check the [DEPLOYMENT.md](./DEPLOYMENT.md) guide
-2. Review error logs in Vercel dashboard
-3. Check database logs in MongoDB Atlas
-4. Review API documentation above
-
-## License
-
-This project is proprietary to Thapar Institute of Engineering and Technology.
-Unauthorized copying or distribution is prohibited.
-
-## Version History
-
-### v1.0.0 (Current)
-- Initial production release
-- Complete authentication system
-- Grade prediction engine
-- Analytics and visualization
-- Admin dashboard
-- Audit logging
-
----
-
-**Last Updated**: June 2026
-**Maintained By**: Development Team
-**Status**: Production Ready
+The previous React/Prisma implementation remains available in Git history. Runtime data, secrets and build output are ignored by Git.

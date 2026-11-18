@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Polls')}"></head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+<main id="main" class="container">
+    <span class="eyebrow">THE CLASS, IN PERSPECTIVE</span><h1>Subject polls</h1>
+    <p class="muted">Answers are anonymous. Admins only see the combined statistics.</p>
+    <div th:replace="~{layout :: flash}"></div>
+
+    <p class="muted" th:if="${polls.empty}">No polls have been created yet.</p>
+
+    <div class="card" th:each="poll : ${polls}">
+        <h3 th:text="${poll.subject.code} + ' - ' + ${poll.question}">Question</h3>
+        <p class="muted">Closes <span th:text="${#temporals.format(poll.endTime, 'dd MMM yyyy HH:mm')}">date</span></p>
+
+        <p th:if="${answered.contains(poll.id)}"><b>You have answered this poll. Thank you!</b></p>
+        <span class="badge" th:text="${poll.open ? 'Open for responses' : 'Closed'}"></span>
+        <div th:if="${predictions.containsKey(poll.id)}" class="detail-tile">
+            <span class="eyebrow">YOUR PREDICTED GRADE</span><div class="grade" th:text="${predictions.get(poll.id).grade().label}"></div>
+            <p class="small muted" th:text="${predictions.get(poll.id).relative() ? 'Relative ranking' : 'Configured cutoff prediction'}"></p>
+        </div>
+        <form th:if="${poll.open and !answered.contains(poll.id)}" th:action="@{/student/polls/{id}/respond(id=${poll.id})}" method="post">
+            <label for="marks">Your marks (0 - 100)</label>
+            <input type="number" name="marks" step="0.01" min="0" max="100" required id="marks">
+            <button type="submit">Submit answer</button>
+        </form>
+    </div>
+</main>
+<div th:replace="~{layout :: footer}"></div></body>
+</html>
