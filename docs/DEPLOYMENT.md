@@ -22,6 +22,9 @@ The live site uses **Google sign-in only**. The demo accounts (`aarav@thapar.edu
 
 1. On [vercel.com](https://vercel.com), click **Add New → Project** and import your GitHub repository.
 2. **Framework Preset:** Vercel sees the `Dockerfile` and picks **Container**. If it shows something else, choose **Container**.
+   - Leave **Root Directory** empty unless the repository is located in a subdirectory.
+   - **Dockerfile Path:** leave it blank or enter `Dockerfile`.
+   - **Build Command** and **Start/Run Command:** leave both empty. The Dockerfile builds the JAR and its entrypoint starts it with `java -jar application.jar`.
 3. Open **Environment Variables** and add these:
 
    | Name | Value |
@@ -44,6 +47,19 @@ The live site uses **Google sign-in only**. The demo accounts (`aarav@thapar.edu
 6. Redeploy: **Deployments → ⋯ (on the latest one) → Redeploy**. Vercel only passes new variables to new deployments.
 
 You don't type any database settings. Neon adds `PGHOST_UNPOOLED`, `PGDATABASE`, `PGUSER` and `PGPASSWORD` to the project, and the app's `postgres` profile builds its connection from them (see `src/main/resources/application-postgres.properties`). On first start, the app creates its tables and loads the 104 curriculum subjects.
+
+After connecting Neon, open **Settings → Environment Variables** and confirm that `PGHOST_UNPOOLED`,
+`PGDATABASE`, `PGUSER` and `PGPASSWORD` exist for the Production environment. If the Neon integration
+does not expose `PGPASSWORD`, set `DB_URL`, `DB_USER` and `DB_PASSWORD` directly instead. Use the
+database values shown in the Neon connection panel:
+
+```text
+DB_URL=jdbc:postgresql://<host>:5432/<database>?sslmode=require
+DB_USER=<database user>
+DB_PASSWORD=<database password>
+```
+
+Do not add quotes around variable values in Vercel. Redeploy after changing database variables.
 
 Open `https://<your-project>.vercel.app`. The sign-in page should now load.
 
@@ -128,6 +144,7 @@ The Docker image already sets `SPRING_PROFILES_ACTIVE=postgres`, so you don't ne
 | What you see | Likely cause and fix |
 | --- | --- |
 | `Could not resolve placeholder 'PGPASSWORD'` in the logs | The Neon database isn't connected to this project, or you didn't redeploy after connecting it. |
+| `SCRAM-based authentication, but no password was provided` | `PGPASSWORD` or `DB_PASSWORD` is missing. Connect the Neon database and redeploy, or set `DB_URL`, `DB_USER` and `DB_PASSWORD` directly. |
 | `Google login requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET` | `GOOGLE_LOGIN_ENABLED` is `true` but the client ID or secret is empty. |
 | Google says `redirect_uri_mismatch` | The redirect URI in Google Cloud must match the site address exactly: `https`, same domain, ending in `/login/oauth2/code/google`. |
 | Back on the sign-in page with an error after choosing a Google account | The account isn't a verified `@thapar.edu` Google account, or it isn't a **Test user** while the consent screen is in Testing. |
