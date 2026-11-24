@@ -48,9 +48,12 @@ The live site uses **Google sign-in only**. The demo accounts (`aarav@thapar.edu
 
 You don't type any database settings. Neon adds `PGHOST_UNPOOLED`, `PGDATABASE`, `PGUSER` and `PGPASSWORD` to the project, and the app's `postgres` profile builds its connection from them (see `src/main/resources/application-postgres.properties`). On first start, the app creates its tables and loads the 104 curriculum subjects.
 
-After connecting Neon, open **Settings → Environment Variables** and confirm that `PGHOST_UNPOOLED`,
-`PGDATABASE`, `PGUSER` and `PGPASSWORD` exist for the Production environment. If the Neon integration
-does not expose `PGPASSWORD`, set `DB_URL`, `DB_USER` and `DB_PASSWORD` directly instead. Use the
+After connecting Neon, open **Settings → Environment Variables** and confirm that `POSTGRES_URL`
+exists for the Production environment. The Neon integration may name the host variables `PGHOST`
+and `PGHOST_UNPOOLED` instead of providing `PGDATABASE`, `PGUSER` and `PGPASSWORD`.
+The application now understands Neon's `POSTGRES_URL` and extracts the database credentials.
+
+If `POSTGRES_URL` is unavailable, set `DB_URL`, `DB_USER` and `DB_PASSWORD` directly instead. Use the
 database values shown in the Neon connection panel:
 
 ```text
