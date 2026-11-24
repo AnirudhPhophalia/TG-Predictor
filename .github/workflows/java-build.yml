@@ -15,7 +15,3 @@ jobs:
           java-version: '21'
           cache: maven
       - run: chmod +x mvnw && ./mvnw -B verify
-      - uses: actions/upload-artifact@v5
-        with:
-          name: thapar-grade-predictor
-          path: target/*.jar

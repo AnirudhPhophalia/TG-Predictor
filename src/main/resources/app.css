@@ -1,0 +1,124 @@
+/* Cream, brown and gold palette from References/ (same colours as the old web CSS). */
+.root {
+    -ink: #302219;
+    -brown: #6b482e;
+    -dark: #432e22;
+    -gold: #b48a5b;
+    -paper: #fbf8f3;
+    -cream: #f1eadd;
+    -line: #e1d6c8;
+    -muted: #7b6a5a;
+    -green: #52705a;
+    -fx-font-family: "System";
+    -fx-font-size: 14px;
+    -fx-text-fill: -ink;
+    -fx-accent: -brown;
+    -fx-focus-color: -gold;
+    -fx-faint-focus-color: transparent;
+}
+
+.root-pane { -fx-background-color: linear-gradient(to bottom right, #f5f0e6, #faf7f1 55%, #efe5d6); }
+.content, .content > .viewport { -fx-background-color: transparent; }
+.page { -fx-padding: 28 36 36 36; }
+.label { -fx-text-fill: -ink; }
+
+/* ---------- type ---------- */
+.h1 { -fx-font-family: "Georgia"; -fx-font-size: 34px; -fx-text-fill: -ink; }
+.h2 { -fx-font-family: "Georgia"; -fx-font-size: 22px; }
+.h3 { -fx-font-family: "Georgia"; -fx-font-size: 17px; }
+.hero { -fx-font-family: "Georgia"; -fx-font-size: 46px; -fx-text-fill: -ink; }
+.lead { -fx-font-size: 17px; -fx-text-fill: -muted; }
+.eyebrow { -fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -brown; }
+.muted { -fx-text-fill: -muted; }
+.small { -fx-font-size: 12px; }
+.bold { -fx-font-weight: bold; }
+.number { -fx-font-family: "Georgia"; -fx-font-size: 30px; }
+.grade { -fx-font-family: "Georgia"; -fx-font-size: 40px; -fx-text-fill: -brown; }
+.field-label { -fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: -muted; }
+
+/* ---------- header and footer ---------- */
+.site-header { -fx-background-color: linear-gradient(to right, #432e22, #5a3c28); -fx-padding: 12 28; }
+.site-header .brand-name, .site-header .header-user { -fx-text-fill: #f6efe3; }
+.site-header .brand-small { -fx-text-fill: #cdb592; }
+.brand-symbol {
+    -fx-background-color: -gold; -fx-text-fill: white; -fx-font-family: "Georgia"; -fx-font-size: 15px;
+    -fx-padding: 6 8; -fx-background-radius: 8;
+}
+.brand-name { -fx-font-family: "Georgia"; -fx-font-size: 16px; }
+.brand-small { -fx-font-size: 9px; -fx-text-fill: -muted; }
+.nav { -fx-background-color: transparent; -fx-text-fill: #eadfcd; -fx-padding: 6 10; -fx-cursor: hand; }
+.nav:hover { -fx-background-color: rgba(255, 255, 255, 0.12); -fx-background-radius: 8; }
+.header-button { -fx-background-color: transparent; -fx-border-color: #b48a5b; -fx-border-radius: 8; -fx-text-fill: #f6efe3; }
+.site-footer { -fx-padding: 10 28; -fx-border-color: -line transparent transparent transparent; -fx-background-color: rgba(255,255,255,0.4); }
+.site-footer .label { -fx-text-fill: -muted; -fx-font-size: 11px; }
+
+/* ---------- cards ---------- */
+.card {
+    -fx-background-color: rgba(255, 255, 255, 0.72);
+    -fx-border-color: -line; -fx-border-radius: 12; -fx-background-radius: 12;
+    -fx-padding: 20;
+    -fx-effect: dropshadow(gaussian, rgba(67, 46, 34, 0.08), 16, 0, 0, 4);
+}
+.metric { -fx-pref-width: 250; }
+.dark-card { -fx-background-color: -dark; -fx-border-color: -dark; }
+.dark-card .label, .dark-card .h2 { -fx-text-fill: #f6efe3; }
+.dark-card .eyebrow { -fx-text-fill: #d9b98f; }
+.dark-card .hyperlink { -fx-text-fill: #e7cfa9; }
+.detail-tile { -fx-background-color: -cream; -fx-background-radius: 10; -fx-padding: 14; -fx-pref-width: 260; }
+.notice { -fx-background-color: #f4ead9; -fx-border-color: #e3cfae; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 12 16; -fx-text-fill: -brown; }
+.badge { -fx-background-color: -cream; -fx-background-radius: 20; -fx-padding: 3 10; -fx-font-size: 11px; -fx-text-fill: -brown; }
+.empty-symbol { -fx-font-family: "Georgia"; -fx-font-size: 28px; -fx-text-fill: -gold; }
+.avatar { -fx-background-color: -gold; -fx-text-fill: white; -fx-font-family: "Georgia"; -fx-font-size: 26px; -fx-padding: 8 18; -fx-background-radius: 40; }
+
+/* ---------- messages ---------- */
+.success, .failure { -fx-padding: 10 36; -fx-font-weight: bold; }
+.success { -fx-background-color: #e3ecdf; -fx-text-fill: -green; }
+.failure { -fx-background-color: #f6dcd6; -fx-text-fill: #8a2f22; }
+
+/* ---------- buttons and inputs ---------- */
+.button {
+    -fx-background-color: -brown; -fx-text-fill: white; -fx-background-radius: 8;
+    -fx-padding: 8 16; -fx-cursor: hand; -fx-font-weight: bold;
+}
+.button:hover { -fx-background-color: #87603f; }
+.button.secondary { -fx-background-color: white; -fx-text-fill: -brown; -fx-border-color: -line; -fx-border-radius: 8; }
+.button.secondary:hover { -fx-background-color: -cream; }
+.button.danger { -fx-background-color: #9b3b2b; }
+.google-button { -fx-background-color: white; -fx-text-fill: -ink; -fx-border-color: -line; -fx-border-radius: 8; -fx-padding: 12; }
+.row-button { -fx-background-color: transparent; -fx-padding: 12 14; -fx-cursor: hand; -fx-background-radius: 10; }
+.row-button:hover { -fx-background-color: -cream; }
+.row-button:focused { -fx-border-color: -gold; -fx-border-radius: 10; }
+.submission-row { -fx-border-color: -line; -fx-border-radius: 10; }
+.action-card { -fx-background-color: rgba(255, 255, 255, 0.72); -fx-border-color: -line; -fx-border-radius: 12; -fx-padding: 20; }
+.action-number { -fx-text-fill: -gold; -fx-font-weight: bold; }
+.hyperlink { -fx-text-fill: -brown; -fx-border-color: transparent; }
+.text-field, .text-area, .combo-box, .password-field {
+    -fx-background-color: white; -fx-border-color: -line; -fx-border-radius: 8; -fx-background-radius: 8;
+}
+.text-field, .password-field { -fx-padding: 8 10; }
+.check-box { -fx-text-fill: -ink; }
+
+/* ---------- tables, grids, charts, pagination ---------- */
+.table-view { -fx-background-color: white; -fx-border-color: -line; -fx-background-radius: 10; -fx-border-radius: 10; }
+.table-view .column-header, .table-view .filler { -fx-background-color: -cream; }
+.table-view .column-header .label { -fx-text-fill: -brown; -fx-font-weight: bold; -fx-font-size: 12px; }
+.table-row-cell:selected { -fx-background-color: #f4ead9; }
+.table-row-cell:selected .text { -fx-fill: -ink; }
+.facts { -fx-hgap: 22; -fx-vgap: 8; }
+.fact-label { -fx-text-fill: -muted; -fx-font-weight: bold; }
+.fact-value { -fx-font-family: "Georgia"; -fx-font-size: 16px; }
+.chart-bar { -fx-bar-fill: #8b6543; }
+.chart-plot-background { -fx-background-color: transparent; }
+.pagination .pagination-control .button { -fx-background-color: white; -fx-text-fill: -brown; -fx-padding: 4 8; }
+.pagination .pagination-control .toggle-button:selected { -fx-background-color: -brown; -fx-text-fill: white; }
+.pagination .pagination-control .toggle-button { -fx-background-color: white; -fx-border-color: -line; -fx-text-fill: -brown; }
+.pagination .pagination-control .page-information { -fx-text-fill: -muted; }
+
+/* ---------- login page ---------- */
+.login-page { -fx-padding: 28 48 36 48; -fx-spacing: 28; }
+.curve-fill { -fx-fill: linear-gradient(to bottom, rgba(181, 139, 96, 0.35), rgba(181, 139, 96, 0)); }
+.curve-line { -fx-fill: transparent; -fx-stroke: #8b6543; -fx-stroke-width: 3; }
+.feature { -fx-padding: 6 0; -fx-border-color: -line transparent transparent transparent; }
+.feature-number { -fx-text-fill: -gold; -fx-font-family: "Georgia"; -fx-font-size: 18px; -fx-min-width: 36; }
+.demo-login > .title { -fx-background-color: -cream; -fx-text-fill: -brown; }
+.ticker { -fx-text-fill: -gold; -fx-font-size: 12px; -fx-font-weight: bold; }
