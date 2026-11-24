@@ -1,34 +1,18 @@
-# Thapar Grade Predictor (JavaFX)
+# Thapar Grade Predictor
 
-A desktop app for Thapar students: submit your marks, see your predicted grade and where you stand in the class, while your individual marks stay private. Built with **Java 21 + JavaFX + JDBC (H2 database)**.
+A Java 21 / Spring Boot application for Thapar students, with Thymeleaf pages, Spring Security Google OIDC login, Spring Data JPA and a persistent database. There is no React, Next.js, Node.js or frontend build pipeline.
 
-New to the code? Read **[docs/PROJECT-GUIDE.md](docs/PROJECT-GUIDE.md)**. It explains the login, database and calculation parts and how the files talk to each other.
+The interface follows the cream, brown and gold palette in `References/`, with responsive layouts, animated headings, scrolling text, distribution graphics and reduced-motion support.
 
----
+## Run a local demo
 
-## Run it (the easy way)
-
-You need a **JDK 21 or newer** (check with `java -version`). Nothing else: Maven and JavaFX download automatically on the first run (this takes a minute or two the first time).
-
-### macOS / Linux
+Install a **full JDK 21**. Maven is downloaded automatically by the included Maven Wrapper on the first run.
 
 ```sh
 ./run.sh demo
 ```
 
-### Windows (Command Prompt)
-
-```bat
-run.cmd demo
-```
-
-### Windows (PowerShell)
-
-```powershell
-.\mvnw.cmd javafx:run '-Dapp.args=--demo'
-```
-
-A window opens. Expand **Local demo sign-in** and use one of these accounts:
+Windows: `run.cmd demo`. Open http://localhost:8080 and expand **Local demo sign-in**.
 
 | Account | Email | Password |
 | --- | --- | --- |
@@ -36,80 +20,91 @@ A window opens. Expand **Local demo sign-in** and use one of these accounts:
 | Student with detected admission year | anirudh_be_24@thapar.edu | student123 |
 | Administrator | admin@thapar.edu | admin123 |
 
-Demo mode uses its own database file (`data/demo-grade-predictor-fx.mv.db`) with 104 curriculum subjects and 120 synthetic students in UCS301, so relative grading (100+ submissions) works straight away. To start the demo fresh, close the app and delete the `data/` folder.
+Demo data lives separately in `data/demo-grade-predictor.mv.db`. It includes 120 clearly named synthetic students for UCS301. Demo login and registration are disabled outside the demo profile. Never use the demo profile for a live deployment. Start the demo on a fresh demo database to populate its sample data.
 
-### Run from VS Code
+## Enable real institute Google login
 
-1. Open this folder in VS Code and install the recommended **Extension Pack for Java** when asked.
-2. Wait for the Java status in the bottom bar to say the project is ready (it reads `pom.xml`).
-3. Open the **Run and Debug** panel, choose **Run demo (sample data)** and press the green play button (or F5).
+1. Create a Google Cloud OAuth client with application type **Web application**. Configure the Google consent screen for the institute, or add permitted test users while it is in testing.
+2. Add `http://localhost:8080/login/oauth2/code/google` as an authorised redirect URI. Add the equivalent HTTPS URI for your deployment.
+3. Copy `.env.example` to `.env`. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and the single `ADMIN_EMAIL` (default `admin@thapar.edu`). All accounts, including the admin, must belong to `@thapar.edu`.
+4. For local H2, remove `DB_URL`, `DB_USER` and `DB_PASSWORD` from `.env`. Run `./run.sh`.
 
-You can also open `src/main/java/com/thapar/gpf/Main.java` and click **Run** above `main`. Without arguments, that starts the real (non-demo) mode.
+The shell launcher loads `.env`; it is a local shell configuration file. For Windows or a direct `java -jar` launch, provide the same values as environment variables. `run.cmd` uses variables already set in its shell; it does not load `.env`.
 
-### Run the tests
+Google OIDC verifies the signed ID token, issuer, audience, nonce and OAuth state. The application then requires `email_verified=true`, the exact `@thapar.edu` domain and the Google hosted-domain claim `hd=thapar.edu`. A lookalike domain or a user-supplied email field cannot grant access. Google credentials are not included in this repository, and live Google sign-in needs your own client configuration.
 
-```sh
-./mvnw test          # Windows: mvnw.cmd test
-```
-
-28 tests check grade boundaries, the 100-submission switch, statistics, mark privacy, locking and unlock review, poll privacy, Google token checks, admission years, the single admin, year records, poll cutoffs, settings and the exports.
-
----
-
-## Real mode (Google sign-in)
-
-Without `demo`, the app uses `data/grade-predictor-fx.mv.db` and only Google sign-in. Password sign-in and registration exist only in demo mode.
-
-1. In Google Cloud Console create an **OAuth client ID** of type **Desktop app**. Configure the consent screen for the institute, or add test users while it is in testing.
-2. Copy `.env.example` to `.env` and fill in `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `ADMIN_EMAIL` (must be `@thapar.edu`).
-3. Run `./run.sh` (it loads `.env`). On Windows, set the same variables in your shell first, then `run.cmd`.
-
-Clicking **Continue with Google** opens your browser. After you pick your account, Google sends the result back to the app on `http://127.0.0.1:<random port>`. The app accepts only a fresh token for this app, with `email_verified=true`, an exact `@thapar.edu` address and the hosted-domain claim `hd=thapar.edu`. Only `ADMIN_EMAIL` gets admin access.
+Admission years are derived from local email portions such as `name_be_24` → 2024, `name.be_25` → 2025 and `be24` → 2024. Unrecognised formats remain blank rather than guessing. Only the configured email receives ADMIN access; promotion of other accounts is rejected. Changing ADMIN_EMAIL takes effect on new sign-ins; restart the application to invalidate existing in-memory sessions.
 
 ## Database
 
-- Default: an **H2 database file** in `data/`. Created automatically on first start; data survives restarts.
-- PostgreSQL: set `DB_URL` (for example `jdbc:postgresql://localhost:5432/grade_predictor`), `DB_USER` and `DB_PASSWORD` in `.env`. The same tables are created there.
-- Tables: `users`, `subjects`, `marks`, `subject_statistics`, `historical_cutoffs`, `past_year_cutoffs`, `polls`, `poll_responses`, `edit_requests`, `platform_settings`. See `database/Database.java`.
+The default database is a **persistent H2 file** at `data/grade-predictor.mv.db`. Student marks, users, polls, unlock requests, settings, active cutoffs and past-year cutoff records survive restarts. No live users or marks are seeded outside demo mode; only sample curriculum subjects and estimated fallback boundaries are created.
 
-Past-year records start empty. The default boundaries (A 85, A- 75, B 65, B- 55, C 45, D 35) are estimates, not verified Thapar results.
+For PostgreSQL, set `DB_URL` (a JDBC URL), `DB_USER` and `DB_PASSWORD`, then run:
+
+```sh
+./run.sh postgres
+```
+
+Or use Docker after filling `.env`:
+
+```sh
+docker compose up --build
+```
+
+The Compose database uses a persistent volume. `SECURE_COOKIES=false` supports local HTTP; use `true` behind HTTPS in production. Configure trusted reverse-proxy forwarding in your hosting environment if TLS terminates before the application. Back up the database before upgrades. Hibernate creates/updates tables for development; use reviewed schema migrations for managed production deployments.
+
+### Prisma source database
+
+Prisma is an ORM, not a database. The original `prisma/schema.prisma` targets MongoDB and generates a JavaScript client. Its schema is retained at `docs/legacy-mongodb-schema.prisma` for migration reference. Because Prisma has no official Java client, this implementation uses JPA for the requested Java-only runtime. It does **not** connect to or silently migrate the legacy MongoDB database. See [database migration](docs/database-migration.md) for the mapping and limitations. Actual legacy records and database credentials were not supplied.
+
+## Features
+
+- Verified institute Google login, admission-year detection, single-email admin access and student profile updates.
+- Search and semester filtering for subjects and personal submissions.
+- One submission per student/subject, optional component marks, immediate locking and an admin-reviewed unlock flow.
+- Relative grading at 100 submissions, strict-lower percentile ranking, historical fallback and unconditional failure below 35.
+- Mean, median, mode, standard deviation, pass/fail rates, contribution indicator, grade counts and score histograms.
+- Admin subject creation, editing and activation; persistent **year-labelled cutoff records**, optional activation and immediate prediction refresh.
+- Subject polls with deadlines, one answer per student, personal predictions, independent manual poll cutoffs and anonymous admin distributions.
+- Admin community metadata, unlock review, aggregate analytics and genuine CSV, Excel (XLSX) and PDF exports.
+- Persistent maintenance and unlock-request settings. Maintenance pauses marks and poll submissions without hiding existing records.
+- Responsive UI, CSS animations, reduced-motion preferences, keyboard focus states and accessible form labels.
+
+Past-year records start empty. The default grade boundaries are estimates, not verified Thapar results. Enter verified records through **Admin → Grade cutoffs** and select **Use these boundaries for predictions** when appropriate. Saving another year does not overwrite other years. Saving the same subject/year updates that record.
+
+## Privacy
+
+Students can view their own marks. Admin routes cannot load individual student submissions; analytics and exports expose aggregates, with suppression below five responses. Unlock review includes a name, subject and reason, not the marks. Database operators still have database-level access; this is application-level access control, not encryption or a cryptographic zero-knowledge system. With small cohorts, student-facing class statistics may also allow inferences.
+
+Predictions are community estimates and are not official results. The contribution indicator reaches 100% at 100 submissions; it is not a probability of prediction accuracy. Grade-point averages on the overview are unweighted estimates, not official CGPA.
+
+## Build and test
+
+```sh
+./build.sh
+./mvnw test
+java -jar target/thapar-gpf-1.0.0.jar
+```
+
+`build.sh` runs the tests and packages an executable JAR. The tests cover grade boundaries, the 100-response transition, statistics, role separation, mark ownership, locking and unlock review, poll privacy, Google identity validation, admission years, single-admin enforcement, year records, manual poll cutoffs and maintenance settings. GitHub Actions runs Maven verification for pushes and pull requests.
 
 ## Project structure
 
 ```text
 src/main/java/com/thapar/gpf/
-  Main.java, App.java   start-up, window, navigation, message banner
-  Config.java           settings from environment variables (.env)
-  AppException.java     a broken rule, shown to the user as a red banner
-  login/                1. who you are: accounts, passwords, Google sign-in, login screen
-  database/             2. how data is stored: connection, tables, one class per table, demo data
-  calculation/          3. the backend: percentiles, grades, statistics, polls, analytics, exports
-  screens/              the student and admin pages, shared UI helpers (incl. pagination)
+  config/        Google OIDC, session security and demo initialisation
+  controller/    authentication, student pages and admin pages
+  dto/           validated form records and aggregate views
+  exception/     controlled errors
+  model/         persistent entities and enums
+  repository/    Spring Data JPA repositories
+  service/       prediction, privacy, marks, polls, history and settings
 src/main/resources/
-  app.css               colours and fonts (cream, brown, gold)
-  data/subjects.tsv     the curriculum loaded on first start
-src/test/               JUnit tests on an in-memory database
-docs/PROJECT-GUIDE.md   how everything fits together
-.vscode/                Run configurations for VS Code
+  templates/     server-rendered Thymeleaf pages
+  static/        CSS and SVG assets
+src/test/        unit and integration tests
+References/      original UI screenshots
+docs/           legacy schema and migration notes
 ```
 
-## Pagination
-
-Long lists are shown a page at a time with JavaFX's built-in `Pagination` control (`Ui.paged`), which also remembers the page you were on:
-
-| Screen | Per page |
-| --- | --- |
-| Student: your submissions / subjects to submit | 6 / 8 |
-| Student: explore subjects | 12 |
-| Student: polls / unlock requests | 5 / 10 |
-| Admin: subjects, users, analytics by subject | 15 |
-| Admin: cutoff forms / past-year records | 5 / 10 |
-| Admin: unlock requests / polls | 8 / 10 |
-
-## Privacy
-
-Students see only their own marks. The admin screens never load individual marks (a test enforces this); analytics and exports are aggregates, hidden below five responses. Unlock review shows a name, subject and reason, never the marks. Anyone with direct access to the database file can still read it; this is access control in the app, not encryption.
-
-Predictions are community estimates, not official results.
-
-The previous Spring Boot web version is in the Git history.
+The previous React/Prisma implementation remains available in Git history. Runtime data, secrets and build output are ignored by Git.

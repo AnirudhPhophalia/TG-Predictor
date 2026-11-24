@@ -1,10 +1,10 @@
 # Legacy database mapping
 
-The legacy Prisma schema describes MongoDB collections with ObjectId keys. The Java application uses relational tables (plain JDBC, see src/main/java/com/thapar/gpf/database/) with generated numeric keys. A MongoDB connection string cannot be supplied as DB_URL; DB_URL must be a JDBC H2 or PostgreSQL URL.
+The legacy Prisma schema describes MongoDB collections with ObjectId keys. The Java application uses relational JPA entities with generated numeric keys. A MongoDB connection string cannot be supplied as DB_URL; DB_URL must be a JDBC H2 or PostgreSQL URL.
 
 | Original collection | Java table/entity | Notes |
 | --- | --- | --- |
-| User | users / User.java | Verified Google identity, admission year and last login are added. Passwords are not imported; users sign in through Google. |
+| User | users / User | Verified Google identity, admission year and last login are added. Passwords are not imported; users sign in through Google. |
 | Subject | subjects / Subject | Curriculum and active status. |
 | Mark | marks / Mark | Unique student/subject, optional breakdown and lock state. |
 | Statistics | subject_statistics / SubjectStatistics | Recomputed from imported marks, never trusted blindly. |

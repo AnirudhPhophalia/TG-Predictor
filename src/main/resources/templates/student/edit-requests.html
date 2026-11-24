@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Unlock Requests')}"></head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+<main id="main" class="container">
+    <h1>My unlock requests</h1>
+    <div th:replace="~{layout :: flash}"></div>
+
+    <p class="muted" th:if="${requests.empty}">You have not sent any unlock requests.</p>
+    <table th:unless="${requests.empty}">
+        <tr><th>Subject</th><th>Reason</th><th>Status</th><th>Sent</th><th>Admin note</th><th></th></tr>
+        <tr th:each="r : ${requests}">
+            <td th:text="${r.mark.subject.code}">UCS301</td>
+            <td th:text="${r.reason}">reason</td>
+            <td><span class="badge" th:classappend="${r.status}" th:text="${r.status}">PENDING</span></td>
+            <td th:text="${#temporals.format(r.createdAt, 'dd MMM yyyy HH:mm')}">date</td>
+            <td th:text="${r.rejectionReason}">-</td>
+            <td>
+                <a class="button" th:if="${r.status.name() == 'APPROVED' and !r.mark.locked}"
+                   th:href="@{/student/submit/{id}(id=${r.mark.subject.id})}">Update Marks Now</a>
+            </td>
+        </tr>
+    </table></div>
+    <p><a th:href="@{/student}">&larr; Back to dashboard</a></p>
+</main>
+<div th:replace="~{layout :: footer}"></div></body>
+</html>

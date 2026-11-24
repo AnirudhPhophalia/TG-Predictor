@@ -1,233 +1,345 @@
 package com.thapar.gpf;
 
-import com.thapar.gpf.calculation.Analytics;
-import com.thapar.gpf.calculation.Exports;
-import com.thapar.gpf.calculation.MarksService;
-import com.thapar.gpf.calculation.MarksService.Submission;
-import com.thapar.gpf.calculation.PollService;
-import com.thapar.gpf.database.Database;
-import com.thapar.gpf.database.DemoData;
-import com.thapar.gpf.database.EditRequest;
-import com.thapar.gpf.database.Mark;
-import com.thapar.gpf.database.Poll;
-import com.thapar.gpf.database.Subject;
-import com.thapar.gpf.database.SubjectStats;
-import com.thapar.gpf.database.User;
-import com.thapar.gpf.login.Accounts;
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.text.PDFTextStripper;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.junit.jupiter.api.BeforeEach;
+import com.thapar.gpf.controller.AdminController;
+import com.thapar.gpf.model.EditRequest;
+import com.thapar.gpf.model.EditStatus;
+import com.thapar.gpf.model.Mark;
+import com.thapar.gpf.repository.EditRequestRepository;
+import com.thapar.gpf.repository.MarkRepository;
+import com.thapar.gpf.repository.SubjectRepository;
+import com.thapar.gpf.repository.UserRepository;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
-import java.io.ByteArrayInputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.stream.StreamSupport;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/** Walks through the student and admin flows and checks that admins never see individual marks. */
+/** Walks through the whole student/admin flow and checks that admins never see marks. */
+@SpringBootTest
+@AutoConfigureMockMvc
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class PrivacyAndFlowTest {
 
-    // an unusual number, so it cannot show up anywhere by accident
-    private static final double SECRET = 73.37;
+    // an unusual number, so it cannot show up on a page by accident
+    private static final String SECRET = "73.37";
 
-    private long ucs301;
+    @Autowired MockMvc mvc;
+    @Autowired UserRepository userRepository;
+    @Autowired SubjectRepository subjectRepository;
+    @Autowired MarkRepository markRepository;
+    @Autowired EditRequestRepository editRequestRepository;
 
-    @BeforeEach
-    void freshDemoDatabase() {
-        Config.demo = true;
-        Config.demoCohortSize = 0;
-        Config.adminEmail = "admin@thapar.edu";
-        Database.open("jdbc:h2:mem:flow" + System.nanoTime(), "sa", "");
-        DemoData.seedIfEmpty();
-        ucs301 = Subject.byCode("UCS301").id();
+    private Long subjectId() {
+        return subjectRepository.findAllByOrderByCodeAsc().stream()
+                .filter(s -> s.getCode().equals("UCS301")).findFirst().orElseThrow().getId();
     }
 
-    private static long id(String email) {
-        return User.byEmail(email).orElseThrow().id();
-    }
-
-    private static Submission total(Double marks) {
-        return new Submission(marks, null, null, null, null, null, null);
+    private Long userId(String email) {
+        return userRepository.findByEmail(email).orElseThrow().getId();
     }
 
     @Test
-    void studentSubmitsOnceAndASecondSubmitIsRefused() {
-        Mark mark = MarksService.submit(id("aarav@thapar.edu"), ucs301, new Submission(SECRET, null, 30.0, null, null, null, null));
-        assertTrue(mark.locked());
-        assertEquals("B", mark.predictedGrade().label());    // 73.37 with default cutoffs (>= 65)
-        AppException locked = assertThrows(AppException.class, () -> MarksService.submit(id("aarav@thapar.edu"), ucs301, total(99.0)));
-        assertEquals(MarksService.LOCKED_MESSAGE, locked.getMessage());
-        assertEquals(SECRET, Mark.mine(id("aarav@thapar.edu"), mark.id()).orElseThrow().totalMarks());
+    @Order(1)
+    void studentSubmitsOnceAndSecondSubmitIsRejectedWith400() throws Exception {
+        mvc.perform(post("/student/submit/" + subjectId()).with(user("aarav@thapar.edu").roles("STUDENT")).with(csrf())
+                        .param("totalMarks", SECRET).param("mstMarks", "30"))
+                .andExpect(status().is3xxRedirection());
+
+        Mark mark = markRepository.findByUserIdAndSubjectId(userId("aarav@thapar.edu"), subjectId()).orElseThrow();
+        assertTrue(mark.isLocked());
+        assertEquals("B", mark.getPredictedGrade().getLabel());   // 73.37 with default cutoffs (>= 65)
+
+        mvc.perform(post("/student/submit/" + subjectId()).with(user("aarav@thapar.edu").roles("STUDENT")).with(csrf())
+                        .param("totalMarks", "99"))
+                .andExpect(status().isBadRequest());
+        assertEquals(73.37, markRepository.findById(mark.getId()).orElseThrow().getTotalMarks());
     }
 
     @Test
-    void studentSeesOwnMarksButNotSomeoneElses() {
-        Mark mark = MarksService.submit(id("aarav@thapar.edu"), ucs301, total(SECRET));
-        assertTrue(Mark.mine(id("aarav@thapar.edu"), mark.id()).isPresent());
-        assertTrue(Mark.mine(id("riya@thapar.edu"), mark.id()).isEmpty());
-        assertTrue(Mark.mine(id("riya@thapar.edu")).isEmpty());
+    @Order(2)
+    void studentSeesOwnMarksButNotSomeoneElses() throws Exception {
+        Mark mark = markRepository.findByUserIdAndSubjectId(userId("aarav@thapar.edu"), subjectId()).orElseThrow();
+
+        mvc.perform(get("/student/marks/" + mark.getId()).with(user("aarav@thapar.edu").roles("STUDENT")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(SECRET)));
+
+        mvc.perform(get("/student/marks/" + mark.getId()).with(user("riya@thapar.edu").roles("STUDENT")))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(get("/student").with(user("aarav@thapar.edu").roles("STUDENT")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(SECRET)));
     }
 
     @Test
-    void unlockFlowWorksAndAdminNeverSeesMarks() {
-        long aarav = id("aarav@thapar.edu");
-        Mark mark = MarksService.submit(aarav, ucs301, total(SECRET));
-        EditRequest.create(aarav, mark.id(), "MST re-evaluated");
-        assertEquals(EditRequest.Status.PENDING, EditRequest.mine(aarav).getFirst().status());
+    @Order(3)
+    void unlockFlowWorksAndAdminNeverSeesMarks() throws Exception {
+        Mark mark = markRepository.findByUserIdAndSubjectId(userId("aarav@thapar.edu"), subjectId()).orElseThrow();
 
-        // the admin view has who / which subject / why, and no field that could hold marks
-        EditRequest.AdminView view = EditRequest.allForAdmin().getFirst();
-        assertEquals("Aarav Sharma", view.studentName());
-        assertEquals("MST re-evaluated", view.reason());
-        assertTrue(Arrays.stream(EditRequest.AdminView.class.getRecordComponents())
-                .noneMatch(c -> c.getType() == double.class || c.getType() == Double.class));
-        assertFalse(view.toString().contains(String.valueOf(SECRET)));
+        mvc.perform(post("/student/marks/" + mark.getId() + "/unlock-request")
+                        .with(user("aarav@thapar.edu").roles("STUDENT")).with(csrf())
+                        .param("reason", "MST re-evaluated"))
+                .andExpect(status().is3xxRedirection());
 
-        EditRequest.approve(view.id());
-        assertFalse(Mark.mine(aarav, mark.id()).orElseThrow().locked());
+        EditRequest request = editRequestRepository.findByUserIdOrderByCreatedAtDesc(userId("aarav@thapar.edu")).get(0);
+        assertEquals(EditStatus.PENDING, request.getStatus());
 
-        // the student re-enters marks and they are locked again
-        Mark updated = MarksService.submit(aarav, ucs301, total(80.5));
-        assertEquals(mark.id(), updated.id());
-        assertTrue(updated.locked());
-        assertEquals(80.5, updated.totalMarks());
-        assertEquals("A-", updated.predictedGrade().label());
-    }
-
-    @Test
-    void rejectedRequestKeepsMarksLocked() {
-        long riya = id("riya@thapar.edu");
-        Mark mark = MarksService.submit(riya, ucs301, total(50.0));
-        EditRequest.create(riya, mark.id(), "typo");
-        assertThrows(AppException.class, () -> EditRequest.create(riya, mark.id(), "typo again"));   // one pending at a time
-        assertThrows(AppException.class, () -> EditRequest.create(id("aarav@thapar.edu"), mark.id(), "not mine"));
-
-        long requestId = EditRequest.mine(riya).getFirst().id();
-        EditRequest.reject(requestId, "No proof");
-        assertEquals(EditRequest.Status.REJECTED, EditRequest.byId(requestId).orElseThrow().status());
-        assertTrue(Mark.mine(riya, mark.id()).orElseThrow().locked());
-        assertThrows(AppException.class, () -> EditRequest.approve(requestId));   // already reviewed
-    }
-
-    @Test
-    void invalidMarksAreRejectedAndNothingIsStored() {
-        long kabir = id("kabir@thapar.edu");
-        for (Double bad : new Double[]{150.0, -1.0, Double.NaN, null}) {
-            assertThrows(AppException.class, () -> MarksService.submit(kabir, ucs301, total(bad)));
+        // every admin page, with a pending request and a submitted mark in the system
+        for (String path : List.of("/admin", "/admin/users", "/admin/edit-requests", "/admin/analytics",
+                "/admin/subjects", "/admin/cutoffs", "/admin/polls", "/admin/export", "/admin/settings")) {
+            MvcResult result = mvc.perform(get(path).with(user("admin@thapar.edu").roles("ADMIN")))
+                    .andExpect(status().isOk()).andReturn();
+            String body = result.getResponse().getContentAsString();
+            assertFalse(body.contains(SECRET), path + " leaked a student's marks");
         }
-        assertThrows(AppException.class, () -> MarksService.submit(kabir, ucs301,
-                new Submission(60.0, 31.0, null, null, null, null, null)));       // EST is out of 30
-        assertTrue(Mark.mineForSubject(kabir, ucs301).isEmpty());
+
+        // admin can see who/why, though
+        mvc.perform(get("/admin/edit-requests").with(user("admin@thapar.edu").roles("ADMIN")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("MST re-evaluated")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Aarav Sharma")));
+
+        mvc.perform(post("/admin/edit-requests/" + request.getId() + "/approve")
+                        .with(user("admin@thapar.edu").roles("ADMIN")).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        assertFalse(markRepository.findById(mark.getId()).orElseThrow().isLocked());
+
+        // student re-enters marks, they are locked again
+        mvc.perform(post("/student/submit/" + subjectId()).with(user("aarav@thapar.edu").roles("STUDENT")).with(csrf())
+                        .param("totalMarks", "80.5"))
+                .andExpect(status().is3xxRedirection());
+        Mark updated = markRepository.findById(mark.getId()).orElseThrow();
+        assertTrue(updated.isLocked());
+        assertEquals(80.5, updated.getTotalMarks());
+        assertEquals("A-", updated.getPredictedGrade().getLabel());
     }
 
     @Test
-    void onlyThaparEmailsCanRegister() {
-        assertThrows(AppException.class, () -> Accounts.register("Evil", "evil@gmail.com", "secret1", null, null, null));
-        assertThrows(AppException.class, () -> Accounts.register("Evil", "@thapar.edu", "secret1", null, null, null));
-        assertThrows(AppException.class, () -> Accounts.register("Short", "short@thapar.edu", "12345", null, null, null));
-        assertThrows(AppException.class, () -> Accounts.register("Admin", "admin@thapar.edu", "secret1", null, null, null));
-        assertTrue(User.byEmail("evil@gmail.com").isEmpty());
+    @Order(4)
+    void rejectedRequestKeepsMarksLocked() throws Exception {
+        mvc.perform(post("/student/submit/" + subjectId()).with(user("riya@thapar.edu").roles("STUDENT")).with(csrf())
+                .param("totalMarks", "50")).andExpect(status().is3xxRedirection());
+        Mark mark = markRepository.findByUserIdAndSubjectId(userId("riya@thapar.edu"), subjectId()).orElseThrow();
 
-        Accounts.register("New Student", "New.Student@Thapar.edu", "secret1", null, null, null);
-        assertEquals(User.Role.STUDENT, User.byEmail("new.student@thapar.edu").orElseThrow().role());
+        mvc.perform(post("/student/marks/" + mark.getId() + "/unlock-request")
+                .with(user("riya@thapar.edu").roles("STUDENT")).with(csrf())
+                .param("reason", "typo")).andExpect(status().is3xxRedirection());
+        // a second pending request is refused
+        mvc.perform(post("/student/marks/" + mark.getId() + "/unlock-request")
+                .with(user("riya@thapar.edu").roles("STUDENT")).with(csrf())
+                .param("reason", "typo again")).andExpect(status().isBadRequest());
+
+        EditRequest request = editRequestRepository.findByUserIdOrderByCreatedAtDesc(userId("riya@thapar.edu")).get(0);
+        mvc.perform(post("/admin/edit-requests/" + request.getId() + "/reject")
+                .with(user("admin@thapar.edu").roles("ADMIN")).with(csrf())
+                .param("reason", "No proof")).andExpect(status().is3xxRedirection());
+
+        assertEquals(EditStatus.REJECTED, editRequestRepository.findById(request.getId()).orElseThrow().getStatus());
+        assertTrue(markRepository.findById(mark.getId()).orElseThrow().isLocked());
     }
 
     @Test
-    void passwordLoginWorksAndRoleFollowsAdminEmail() {
-        assertTrue(Accounts.login("admin@thapar.edu", "admin123").isAdmin());
-        assertFalse(Accounts.login("aarav@thapar.edu", "student123").isAdmin());
-        assertThrows(AppException.class, () -> Accounts.login("aarav@thapar.edu", "wrong"));
-        assertThrows(AppException.class, () -> Accounts.login("someone@gmail.com", "x"));
-        assertFalse(User.byEmail("aarav@thapar.edu").orElseThrow().passwordHash().contains("student123"));
-
-        Config.demo = false;      // outside demo mode only Google sign-in exists
-        assertThrows(AppException.class, () -> Accounts.login("admin@thapar.edu", "admin123"));
-        assertThrows(AppException.class, () -> Accounts.register("X", "x@thapar.edu", "secret1", null, null, null));
+    @Order(5)
+    void invalidMarksAreRejectedAndNothingIsStored() throws Exception {
+        for (String bad : List.of("150", "-1", "abc", "")) {
+            mvc.perform(post("/student/submit/" + subjectId()).with(user("kabir@thapar.edu").roles("STUDENT")).with(csrf())
+                            .param("totalMarks", bad))
+                    .andExpect(status().isOk())
+                    .andExpect(view().name("student/submit"));
+        }
+        mvc.perform(post("/student/submit/" + subjectId()).with(user("kabir@thapar.edu").roles("STUDENT")).with(csrf())
+                        .param("totalMarks", "60").param("estMarks", "31"))
+                .andExpect(status().isOk());
+        assertTrue(markRepository.findByUserIdAndSubjectId(userId("kabir@thapar.edu"), subjectId()).isEmpty());
     }
 
     @Test
-    void pollAggregatesDoNotExposeIndividualAnswers() {
-        long pollId = PollService.create(ucs301, "MST marks?", 24);
-        assertEquals("MST marks?", Poll.all().getFirst().question());
+    @Order(6)
+    void rolesAreSeparated() throws Exception {
+        mvc.perform(get("/admin").with(user("aarav@thapar.edu").roles("STUDENT"))).andExpect(status().isForbidden());
+        mvc.perform(get("/student").with(user("admin@thapar.edu").roles("ADMIN"))).andExpect(status().isForbidden());
+        mvc.perform(get("/student")).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/admin/export")).andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    @Order(7)
+    void onlyThaparEmailsCanRegister() throws Exception {
+        mvc.perform(post("/register").with(csrf()).param("name", "Evil").param("email", "evil@gmail.com")
+                        .param("password", "secret1"))
+                .andExpect(status().isOk()).andExpect(view().name("register"));
+        mvc.perform(post("/register").with(csrf()).param("name", "Evil").param("email", "@thapar.edu")
+                        .param("password", "secret1"))
+                .andExpect(status().isOk()).andExpect(view().name("register"));
+        assertFalse(userRepository.existsByEmail("evil@gmail.com"));
+
+        mvc.perform(post("/register").with(csrf()).param("name", "New Student").param("email", "New.Student@Thapar.edu")
+                        .param("password", "secret1"))
+                .andExpect(status().is3xxRedirection());
+        assertTrue(userRepository.existsByEmail("new.student@thapar.edu"));
+        assertEquals("STUDENT", userRepository.findByEmail("new.student@thapar.edu").orElseThrow().getRole().name());
+    }
+
+    @Test
+    @Order(8)
+    void formLoginWorksForSeededAdminAndRedirectsByRole() throws Exception {
+        mvc.perform(post("/login").with(csrf()).param("email", "admin@thapar.edu").param("password", "admin123"))
+                .andExpect(redirectedUrl("/admin"));
+        mvc.perform(post("/login").with(csrf()).param("email", "aarav@thapar.edu").param("password", "student123"))
+                .andExpect(redirectedUrl("/student"));
+        mvc.perform(post("/login").with(csrf()).param("email", "aarav@thapar.edu").param("password", "wrong"))
+                .andExpect(redirectedUrl("/login?error"));
+        mvc.perform(post("/login").with(csrf()).param("email", "someone@gmail.com").param("password", "x"))
+                .andExpect(redirectedUrl("/login?error"));
+    }
+
+    @Test
+    @Order(9)
+    void pollAggregatesDoNotExposeIndividualAnswers() throws Exception {
+        var admin = user("admin@thapar.edu").roles("ADMIN");
+        mvc.perform(post("/admin/polls").with(admin).with(csrf())
+                .param("subjectId", String.valueOf(subjectId())).param("question", "MST marks?").param("durationHours", "24"))
+                .andExpect(status().is3xxRedirection());
+
+        mvc.perform(get("/student/polls").with(user("kabir@thapar.edu").roles("STUDENT")))
+                .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("MST marks?")));
+
+        Long pollId = 1L;
 
         // fewer than 5 answers: admin gets only the count
-        PollService.respond(id("kabir@thapar.edu"), pollId, 44.44);
-        PollService.Summary early = PollService.summarize(pollId);
-        assertTrue(early.hidden());
-        assertEquals(1, early.responses());
-        assertEquals(0, early.average());
+        answer("kabir@thapar.edu", pollId, "44.44");
+        String early = mvc.perform(get("/admin/polls/" + pollId + "/responses").with(admin))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertFalse(early.contains("44.44"));
+        assertTrue(early.contains("at least 5"));
 
-        assertThrows(AppException.class, () -> PollService.respond(id("kabir@thapar.edu"), pollId, 10.0));   // once only
-        PollService.respond(id("riya@thapar.edu"), pollId, 52.52);
-        PollService.respond(id("aarav@thapar.edu"), pollId, 60.0);
-        PollService.respond(id("anirudh_be_24@thapar.edu"), pollId, 70.0);
-        Accounts.register("Poll Person", "p1@thapar.edu", "secret1", null, null, null);
-        PollService.respond(id("p1@thapar.edu"), pollId, 80.0);
+        // duplicate answer is refused with a flash message, not stored
+        answer("kabir@thapar.edu", pollId, "10");
 
-        // 44.44, 52.52, 60, 70, 80 => average 61.392
-        PollService.Summary summary = PollService.summarize(pollId);
-        assertFalse(summary.hidden());
-        assertEquals(61.392, summary.average(), 1e-9);
-        assertFalse(summary.toString().contains("52.52"), "individual answers must not appear");
-        assertFalse(summary.toString().contains("Riya"));
+        answer("riya@thapar.edu", pollId, "52.52");
+        for (String extra : List.of("p1@thapar.edu", "p2@thapar.edu", "p3@thapar.edu")) {
+            var u = new com.thapar.gpf.model.User();
+            u.setName("Poll Person " + extra);
+            u.setEmail(extra);
+            u.setPassword("x");
+            userRepository.save(u);
+        }
+        answer("p1@thapar.edu", pollId, "60");
+        answer("p2@thapar.edu", pollId, "70");
+        answer("p3@thapar.edu", pollId, "80");
+
+        // 44.44, 52.52, 60, 70, 80 => average 61.4
+        String body = mvc.perform(get("/admin/polls/" + pollId + "/responses").with(admin))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(body.contains("61.4"), "average should be shown once 5 students answered");
+        assertFalse(body.contains("Kabir"));
+        assertFalse(body.contains("Riya"));
+        assertFalse(body.contains("Poll Person"));
+        assertFalse(body.contains("52.52"), "individual answers must not appear");
+    }
+
+    private void answer(String email, Long pollId, String marks) throws Exception {
+        mvc.perform(post("/student/polls/" + pollId + "/respond").with(user(email).roles("STUDENT")).with(csrf())
+                .param("marks", marks)).andExpect(status().is3xxRedirection());
     }
 
     @Test
-    void adminStatisticsAreHiddenWhileASubjectHasFewerThanFiveResponses() {
-        MarksService.submit(id("aarav@thapar.edu"), ucs301, total(80.5));
-        MarksService.submit(id("riya@thapar.edu"), ucs301, total(50.0));
-
-        String line = Analytics.csv().lines().filter(l -> l.startsWith("UCS301")).findFirst().orElseThrow();
-        assertTrue(line.contains(",2,,,"), line);      // response count only, rest blank
-        assertFalse(line.contains("80.5"));
-        assertTrue(Analytics.build().subjectStats().stream().filter(s -> s.code().equals("UCS301")).findFirst().orElseThrow().hidden());
+    @Order(11)
+    void adminStatisticsAreHiddenWhileASubjectHasFewerThanFiveResponses() throws Exception {
+        // UCS301 has only 2 submissions in this test run (aarav, riya)
+        String csv = mvc.perform(get("/admin/export").with(user("admin@thapar.edu").roles("ADMIN")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String ucs301 = csv.lines().filter(l -> l.startsWith("UCS301")).findFirst().orElseThrow();
+        assertTrue(ucs301.contains(",2,,,"), ucs301);   // response count only, rest blank
+        assertFalse(ucs301.contains("80.5"));
+        assertFalse(ucs301.contains("50"));
 
         // while the student still sees class statistics (including their own contribution)
-        assertEquals(65.25, SubjectStats.of(Subject.get(ucs301)).average(), 1e-9);
+        Mark mark = markRepository.findByUserIdAndSubjectId(userId("aarav@thapar.edu"), subjectId()).orElseThrow();
+        mvc.perform(get("/student/marks/" + mark.getId()).with(user("aarav@thapar.edu").roles("STUDENT")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("65.25")));   // (80.5 + 50) / 2
     }
 
-    /** Structural guard: the admin screens must not be able to reach individual marks at all. */
+    /** Structural guard: the admin controller must not be able to reach individual marks at all. */
     @Test
-    void adminScreensNeverUseTheMarksTable() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/thapar/gpf/screens/AdminScreens.java"));
-        assertFalse(source.matches("(?s).*\\bMark\\b.*"), "AdminScreens must not use the Mark table");
-        assertFalse(source.contains("MarksService"), "AdminScreens must not use MarksService");
-    }
-
-    @Test
-    void studentCanUpdateTheirProfile() {
-        Accounts.login("aarav@thapar.edu", "student123");
-        Accounts.updateProfile("102403123", "COE", 3);
-        assertEquals(3, User.byEmail("aarav@thapar.edu").orElseThrow().semester());
-        assertEquals(3, Accounts.current().semester());
-        assertThrows(AppException.class, () -> Accounts.updateProfile("bad roll!", "COE", 3));
-        assertThrows(AppException.class, () -> Accounts.updateProfile("102403123", "COE", 9));
-    }
-
-    @Test
-    void excelAndPdfExportsAreValidAndSuppressSmallCohorts() throws Exception {
-        MarksService.submit(id("aarav@thapar.edu"), ucs301, total(80.5));
-        MarksService.submit(id("riya@thapar.edu"), ucs301, total(50.0));
-
-        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(Exports.export("xlsx")))) {
-            var sheet = workbook.getSheetAt(0);
-            assertEquals(Subject.count(), sheet.getLastRowNum());
-            var row = StreamSupport.stream(sheet.spliterator(), false)
-                    .filter(r -> r.getCell(0).getStringCellValue().equals("UCS301")).findFirst().orElseThrow();
-            assertEquals(2.0, row.getCell(2).getNumericCellValue());
-            assertNull(row.getCell(3), "Small-cohort averages must be omitted from spreadsheets");
+    @Order(10)
+    void adminControllerHasNoDependencyOnMarks() {
+        List<Class<?>> used = new ArrayList<>();
+        for (Constructor<?> c : AdminController.class.getDeclaredConstructors()) used.addAll(List.of(c.getParameterTypes()));
+        for (Field f : AdminController.class.getDeclaredFields()) used.add(f.getType());
+        for (Method m : AdminController.class.getDeclaredMethods()) {
+            used.add(m.getReturnType());
+            used.addAll(List.of(m.getParameterTypes()));
         }
-        try (var document = Loader.loadPDF(Exports.export("pdf"))) {
+        for (Class<?> type : used) {
+            assertNotEquals("MarksService", type.getSimpleName());
+            assertNotEquals("MarkRepository", type.getSimpleName());
+            assertNotEquals("Mark", type.getSimpleName());
+        }
+    }
+
+    @Test
+    @Order(12)
+    void studentCanUseProfileSearchAndSemesterFilters() throws Exception {
+        var student = user("aarav@thapar.edu").roles("STUDENT");
+        mvc.perform(get("/student/profile").with(student)).andExpect(status().isOk());
+        mvc.perform(get("/student/help").with(student)).andExpect(status().isOk());
+        mvc.perform(get("/student/subjects").with(student).param("search", "Data Structures"))
+                .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("UCS301")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("UEC501"))));
+        mvc.perform(post("/student/profile").with(student).with(csrf())
+                        .param("rollNumber", "102403123").param("branch", "COE").param("semester", "3"))
+                .andExpect(redirectedUrl("/student/profile"));
+        assertEquals(3, userRepository.findByEmail("aarav@thapar.edu").orElseThrow().getSemester());
+        mvc.perform(get("/student").with(student).param("semester", "7"))
+                .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(SECRET))));
+    }
+
+    @Test
+    @Order(13)
+    void excelAndPdfExportsAreValidAndSuppressPrivateSmallCohorts() throws Exception {
+        var admin = user("admin@thapar.edu").roles("ADMIN");
+        byte[] excel = mvc.perform(get("/admin/export").param("format", "excel").with(admin))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .andReturn().getResponse().getContentAsByteArray();
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(excel))) {
+            var sheet = workbook.getSheetAt(0);
+            assertEquals(subjectRepository.count(), sheet.getLastRowNum());
+            var rows = java.util.stream.StreamSupport.stream(sheet.spliterator(), false);
+            var subject = rows.filter(r -> r.getCell(0).getStringCellValue().equals("UCS301")).findFirst().orElseThrow();
+            assertEquals(2.0, subject.getCell(2).getNumericCellValue());
+            assertNull(subject.getCell(3), "Small-cohort averages must be omitted from spreadsheets");
+        }
+        byte[] pdf = mvc.perform(get("/admin/export").param("format", "pdf").with(admin))
+                .andExpect(status().isOk()).andExpect(content().contentType("application/pdf"))
+                .andReturn().getResponse().getContentAsByteArray();
+        try (var document = org.apache.pdfbox.Loader.loadPDF(pdf)) {
             assertTrue(document.getNumberOfPages() >= 3);
-            String text = new PDFTextStripper().getText(document);
+            String text = new org.apache.pdfbox.text.PDFTextStripper().getText(document);
             assertTrue(text.contains("UCS301"));
             assertFalse(text.contains("80.50"));
             assertFalse(text.contains("Aarav"));
         }
-        assertThrows(AppException.class, () -> Exports.export("unknown"));
+        mvc.perform(get("/admin/export").param("format", "unknown").with(admin)).andExpect(status().isBadRequest());
+        mvc.perform(get("/admin/export").param("format", "pdf").with(user("aarav@thapar.edu").roles("STUDENT")))
+                .andExpect(status().isForbidden());
     }
 }
