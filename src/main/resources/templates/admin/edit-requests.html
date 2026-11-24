@@ -5,7 +5,6 @@
 <div th:replace="~{layout :: navbar}"></div>
 <main id="main" class="container">
     <h1>Unlock requests</h1>
-    <p class="muted">You see who asked, for which subject and why. Student marks are never shown to admins.</p>
     <div th:replace="~{layout :: flash}"></div>
 
     <p class="muted" th:if="${requests.empty}">No requests yet.</p>

@@ -4,7 +4,7 @@
 <body>
 <div th:replace="~{layout :: navbar}"></div>
 <main id="main" class="container">
-    <span class="eyebrow">THE THAPAR COMMUNITY</span><h1>Users</h1><p class="muted">Only the email configured in ADMIN_EMAIL can access administration.</p>
+    <span class="eyebrow">THE THAPAR COMMUNITY</span><h1>Users</h1>
     <div th:replace="~{layout :: flash}"></div>
 
     <div class="table-scroll"><table>
@@ -21,7 +21,6 @@
         </tr>
     </table></div>
     <nav th:replace="~{layout :: pager(${users}, @{/admin/users}, 'page')}"></nav>
-    <p class="muted">Marks are private to each student and are not available here.</p>
 </main>
 <div th:replace="~{layout :: footer}"></div></body>
 </html>
