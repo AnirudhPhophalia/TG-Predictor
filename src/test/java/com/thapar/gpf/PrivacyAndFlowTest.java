@@ -383,7 +383,7 @@ class PrivacyAndFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("search=U&amp;semester=0&amp;page=1")));
 
-        // without a semester in the address the student sees their current one (test 12 set aarav's profile to 3)
+        // without a semester in the address, the current semester (3, set in test 12) comes first, then 2, 1, 4...
         mvc.perform(get("/student/subjects").with(user("aarav@thapar.edu").roles("STUDENT")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("UCS301")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("UML501"))));

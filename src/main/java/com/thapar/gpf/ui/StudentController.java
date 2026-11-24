@@ -1,7 +1,6 @@
 package com.thapar.gpf.ui;
 
 import com.thapar.gpf.backend.dto.MarksSubmissionRequest;
-import com.thapar.gpf.backend.dto.SubjectStatDTO;
 import com.thapar.gpf.backend.dto.SubmissionRow;
 import com.thapar.gpf.backend.exception.BadRequestException;
 import com.thapar.gpf.database.tables.Mark;
@@ -21,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -50,7 +50,8 @@ public class StudentController {
     public String dashboard(Principal principal, Model model, @RequestParam(required = false) Integer semester,
                             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "0") int open) {
         User student = userService.getByEmail(principal.getName());
-        int shown = semesterToShow(semester, student);
+        int shown = semester == null ? 0 : semester;
+        Integer current = UserService.currentSemester(student);
 
         List<Mark> myMarks = marksService.findMyMarks(student.getId());
         Page<SubmissionRow> rows = Pagination.of(myMarks.stream()
@@ -61,11 +62,11 @@ public class StudentController {
         Set<Long> submittedSubjectIds = myMarks.stream()
                 .map(m -> m.getSubject().getId())
                 .collect(Collectors.toSet());
-        Page<SubjectStatDTO> openSubjects = Pagination.of(subjectService.findActive().stream()
+        Page<Subject> openSubjects = Pagination.of(subjectService.findActive().stream()
                         .filter(s -> !submittedSubjectIds.contains(s.getId()))
                         .filter(s -> inSemester(s, shown))
-                        .toList(), open, 8)
-                .map(subjectService::statsFor);
+                        .sorted(currentSemesterFirst(current))
+                        .toList(), open, 8);
 
         model.addAttribute("student", student);
         model.addAttribute("rows", rows);
@@ -76,6 +77,7 @@ public class StudentController {
             case A -> 10; case A_MINUS -> 9; case B -> 8; case B_MINUS -> 7; case C -> 6; case D -> 5; case E -> 0;
         }).average().orElse(0));
         model.addAttribute("selectedSemester", shown);
+        model.addAttribute("currentSemester", current);
         return "student/dashboard";
     }
 
@@ -180,13 +182,16 @@ public class StudentController {
     public String subjects(Principal principal, @RequestParam(defaultValue = "") String search,
                             @RequestParam(required = false) Integer semester,
                             @RequestParam(defaultValue = "0") int page, Model model) {
-        int shown = semesterToShow(semester, userService.getByEmail(principal.getName()));
+        int shown = semester == null ? 0 : semester;
+        Integer current = UserService.currentSemester(userService.getByEmail(principal.getName()));
         model.addAttribute("search", search);
         model.addAttribute("selectedSemester", shown);
+        model.addAttribute("currentSemester", current);
         model.addAttribute("subjects", Pagination.of(subjectService.findActive().stream()
                 .filter(s -> inSemester(s, shown))
                 .filter(s -> (s.getCode() + " " + s.getName() + " " + s.getBranch()).toLowerCase(java.util.Locale.ROOT)
-                        .contains(search.toLowerCase(java.util.Locale.ROOT))).toList(), page, 12));
+                        .contains(search.toLowerCase(java.util.Locale.ROOT)))
+                .sorted(currentSemesterFirst(current)).toList(), page, 12));
         return "student/subjects";
     }
 
@@ -207,11 +212,17 @@ public class StudentController {
         return "redirect:/student/polls?page=" + page;
     }
 
-    /** No semester in the address means the student's current one; 0 means all semesters. */
-    private static int semesterToShow(Integer requested, User student) {
-        if (requested != null) return requested;
-        Integer current = UserService.currentSemester(student);
-        return current == null ? 0 : current;
+    /**
+     * Current semester first, then earlier ones newest first, then later ones:
+     * for a semester 5 student that is 5, 4, 3, 2, 1, 6, 7, 8. Unknown semester: 1 to 8.
+     */
+    static Comparator<Subject> currentSemesterFirst(Integer current) {
+        return Comparator.comparingInt(s -> {
+            Integer semester = s.getSemester();
+            if (semester == null) return 99;
+            if (current == null || semester > current) return semester;
+            return current - semester;
+        });
     }
 
     private static boolean inSemester(Subject subject, int semester) {
