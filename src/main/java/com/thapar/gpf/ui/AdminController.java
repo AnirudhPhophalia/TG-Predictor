@@ -2,7 +2,6 @@ package com.thapar.gpf.ui;
 
 import com.thapar.gpf.backend.dto.CutoffRequest;
 import com.thapar.gpf.backend.dto.SubjectRequest;
-import com.thapar.gpf.backend.exception.BadRequestException;
 import com.thapar.gpf.backend.exception.ResourceNotFoundException;
 import com.thapar.gpf.database.tables.Role;
 import com.thapar.gpf.database.tables.Subject;
@@ -16,7 +15,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -24,8 +22,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
-import java.io.IOException;
-import java.io.InputStream;
 
 /**
  * PRIVACY: this controller deliberately has no access to MarksService, MarkRepository
@@ -42,7 +38,6 @@ public class AdminController {
     private final PollService pollService;
     private final AnalyticsService analyticsService;
     private final com.thapar.gpf.backend.service.PastYearCutoffService history;
-    private final com.thapar.gpf.backend.service.FallbackCutoffImportService cutoffImporter;
     @org.springframework.beans.factory.annotation.Autowired
     private com.thapar.gpf.backend.service.SettingsService settings;
     @org.springframework.beans.factory.annotation.Autowired
@@ -52,15 +47,13 @@ public class AdminController {
 
     public AdminController(SubjectService subjectService, UserService userService,
                            UnlockRequestService unlockRequestService, PollService pollService,
-                           AnalyticsService analyticsService, com.thapar.gpf.backend.service.PastYearCutoffService history,
-                           com.thapar.gpf.backend.service.FallbackCutoffImportService cutoffImporter) {
+                           AnalyticsService analyticsService, com.thapar.gpf.backend.service.PastYearCutoffService history) {
         this.subjectService = subjectService;
         this.userService = userService;
         this.unlockRequestService = unlockRequestService;
         this.pollService = pollService;
         this.analyticsService = analyticsService;
         this.history = history;
-        this.cutoffImporter = cutoffImporter;
     }
 
     // ---------- dashboard & analytics ----------
@@ -163,23 +156,6 @@ public class AdminController {
         history.save(subjectId, academicYear, request, useForPredictions);
         redirect.addFlashAttribute("success", "Cutoffs saved.");
         return "redirect:/admin/cutoffs?page=" + page;
-    }
-
-    @PostMapping(value = "/cutoffs/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public String importCutoffs(@RequestParam("file") MultipartFile file, RedirectAttributes redirect) {
-        if (file.isEmpty() || file.getSize() > 1_000_000) {
-            redirect.addFlashAttribute("failure", "Upload a non-empty JSON file smaller than 1 MB.");
-            return "redirect:/admin/cutoffs";
-        }
-        try (InputStream input = file.getInputStream()) {
-            int updated = cutoffImporter.importCutoffs(input);
-            redirect.addFlashAttribute("success", "Updated historical cutoffs for " + updated + " subjects.");
-        } catch (BadRequestException e) {
-            redirect.addFlashAttribute("failure", e.getMessage());
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to read the uploaded cutoff file.", e);
-        }
-        return "redirect:/admin/cutoffs";
     }
 
     // ---------- users ----------
