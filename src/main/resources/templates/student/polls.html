@@ -21,11 +21,13 @@
             <p class="small muted" th:text="${predictions.get(poll.id).relative() ? 'Relative ranking' : 'Configured cutoff prediction'}"></p>
         </div>
         <form th:if="${poll.open and !answered.contains(poll.id)}" th:action="@{/student/polls/{id}/respond(id=${poll.id})}" method="post">
-            <label for="marks">Your marks (0 - 100)</label>
-            <input type="number" name="marks" step="0.01" min="0" max="100" required id="marks">
+            <label th:for="'marks-' + ${poll.id}">Your marks (0 - 100)</label>
+            <input type="number" name="marks" step="0.01" min="0" max="100" required th:id="'marks-' + ${poll.id}">
+            <input type="hidden" name="page" th:value="${polls.number}">
             <button type="submit">Submit answer</button>
         </form>
     </div>
+    <nav th:replace="~{layout :: pager(${polls}, @{/student/polls}, 'page')}"></nav>
 </main>
 <div th:replace="~{layout :: footer}"></div></body>
 </html>

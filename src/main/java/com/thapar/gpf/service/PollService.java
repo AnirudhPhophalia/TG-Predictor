@@ -93,8 +93,8 @@ public class PollService {
 
     // ---------- admin side (aggregates only) ----------
 
-    public List<PollSummaryDTO> summarizeAll() {
-        return pollRepository.findAllByOrderByCreatedAtDesc().stream().map(this::summarize).toList();
+    public org.springframework.data.domain.Page<PollSummaryDTO> summarize(org.springframework.data.domain.Pageable page) {
+        return pollRepository.findAll(page).map(this::summarize);
     }
 
     public PollSummaryDTO summarize(Long pollId) {
@@ -114,7 +114,9 @@ public class PollService {
         pollRepository.save(poll);
     }
 
-    public List<Poll> findAllPolls() { return pollRepository.findAllByOrderByCreatedAtDesc(); }
+    public org.springframework.data.domain.Page<Poll> findPolls(org.springframework.data.domain.Pageable page) {
+        return pollRepository.findAll(page);
+    }
 
     public java.util.Optional<GradePredictionService.Prediction> myPrediction(Long pollId, Long studentId) {
         return responseRepository.findByPollIdAndUserId(pollId, studentId).map(response -> {

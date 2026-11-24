@@ -22,6 +22,10 @@ Windows: `run.cmd demo`. Open http://localhost:8080 and expand **Local demo sign
 
 Demo data lives separately in `data/demo-grade-predictor.mv.db`. It includes 120 clearly named synthetic students for UCS301. Demo login and registration are disabled outside the demo profile. Never use the demo profile for a live deployment. Start the demo on a fresh demo database to populate its sample data.
 
+## Deploy online
+
+Step-by-step guide: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**. It covers the app on Vercel, the database on Neon (created from inside Vercel) and Render as a fallback.
+
 ## Enable real institute Google login
 
 1. Create a Google Cloud OAuth client with application type **Web application**. Configure the Google consent screen for the institute, or add permitted test users while it is in testing.
@@ -68,9 +72,27 @@ Prisma is an ORM, not a database. The original `prisma/schema.prisma` targets Mo
 - Subject polls with deadlines, one answer per student, personal predictions, independent manual poll cutoffs and anonymous admin distributions.
 - Admin community metadata, unlock review, aggregate analytics and genuine CSV, Excel (XLSX) and PDF exports.
 - Persistent maintenance and unlock-request settings. Maintenance pauses marks and poll submissions without hiding existing records.
+- Pagination on every long list, with Previous / page number / Next links. Filters and the current page are kept after actions such as approving a request.
 - Responsive UI, CSS animations, reduced-motion preferences, keyboard focus states and accessible form labels.
 
 Past-year records start empty. The default grade boundaries are estimates, not verified Thapar results. Enter verified records through **Admin → Grade cutoffs** and select **Use these boundaries for predictions** when appropriate. Saving another year does not overwrite other years. Saving the same subject/year updates that record.
+
+## Pagination
+
+| Page | Per page | How it is paged |
+| --- | --- | --- |
+| Admin → Subjects | 15 | database (`Pageable`, LIMIT/OFFSET) |
+| Admin → Grade cutoffs: subject forms / past-year records | 5 / 10 | database, two separate pagers |
+| Admin → Users | 15 | database |
+| Admin → Unlock requests | 10 | database |
+| Admin → Polls | 10 | database |
+| Admin → Analytics: per-subject table | 15 | in memory (computed statistics) |
+| Student → Overview: submissions / subjects to submit | 6 / 8 | in memory (filtered by semester) |
+| Student → Explore subjects | 12 | in memory (search and semester filter) |
+| Student → Unlock requests | 10 | database |
+| Student → Polls | 5 | database |
+
+`controller/Pages.java` has the two helpers. `Pages.fetch` asks the repository for one page through Spring Data's `Pageable`. `Pages.of` slices a list that Java has already filtered or computed. Both return a Spring Data `Page`, which the shared `pager` fragment in `templates/layout.html` renders. A page number past the end shows the last page.
 
 ## Privacy
 

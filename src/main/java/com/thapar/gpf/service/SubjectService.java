@@ -37,6 +37,10 @@ public class SubjectService {
         return subjectRepository.findAllByOrderByCodeAsc();
     }
 
+    public org.springframework.data.domain.Page<Subject> findPage(org.springframework.data.domain.Pageable page) {
+        return subjectRepository.findAll(page);
+    }
+
     public List<Subject> findActive() {
         return subjectRepository.findByActiveTrueOrderByCodeAsc();
     }

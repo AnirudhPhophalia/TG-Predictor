@@ -20,8 +20,9 @@
             <input type="text" name="branch" th:value="${form.branch()}" placeholder="COE" id="branch">
             <label for="credits">Credits</label>
             <input type="number" name="credits" min="1" max="30" step="0.5" th:value="${form.credits()}" required id="credits">
+            <input type="hidden" name="page" th:if="${editing != null}" th:value="${subjects.number}">
             <button type="submit" th:text="${editing != null} ? 'Save changes' : 'Add subject'">Add subject</button>
-            <a class="button secondary" th:if="${editing != null}" th:href="@{/admin/subjects}">Cancel</a>
+            <a class="button secondary" th:if="${editing != null}" th:href="@{/admin/subjects(page=${subjects.number})}">Cancel</a>
         </form>
     </div>
 
@@ -35,13 +36,15 @@
             <td th:text="${s.credits}">4</td>
             <td th:text="${s.active} ? 'Active' : 'Inactive'">Active</td>
             <td>
-                <a th:href="@{/admin/subjects(edit=${s.id})}">Edit</a>
+                <a th:href="@{/admin/subjects(edit=${s.id},page=${subjects.number})}">Edit</a>
                 <form class="inline" th:action="@{/admin/subjects/{id}/toggle(id=${s.id})}" method="post">
+                    <input type="hidden" name="page" th:value="${subjects.number}">
                     <button type="submit" class="secondary" th:text="${s.active} ? 'Deactivate' : 'Activate'">Toggle</button>
                 </form>
             </td>
         </tr>
     </table></div>
+    <nav th:replace="~{layout :: pager(${subjects}, @{/admin/subjects}, 'page')}"></nav>
 </main>
 <div th:replace="~{layout :: footer}"></div></body>
 </html>

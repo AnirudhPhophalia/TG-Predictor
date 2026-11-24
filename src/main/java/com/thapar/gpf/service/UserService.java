@@ -11,7 +11,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -107,11 +106,10 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public List<UserSummary> findAllSummaries() {
-        return userRepository.findAllByOrderByCreatedAtDesc().stream()
+    public org.springframework.data.domain.Page<UserSummary> findSummaries(org.springframework.data.domain.Pageable page) {
+        return userRepository.findAll(page)
                 .map(u -> new UserSummary(u.getId(), u.getName(), u.getEmail(), u.getRollNumber(),
-                        u.getBranch(), u.getSemester(), u.getRole(), u.getCreatedAt()))
-                .toList();
+                        u.getBranch(), u.getSemester(), u.getRole(), u.getCreatedAt()));
     }
 
     @Transactional

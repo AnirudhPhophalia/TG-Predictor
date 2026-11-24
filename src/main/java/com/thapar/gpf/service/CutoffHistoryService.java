@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.Year;
-import java.util.List;
 
 @Service
 public class CutoffHistoryService {
@@ -20,7 +19,9 @@ public class CutoffHistoryService {
         this.subjects = subjects;
     }
 
-    public List<PastYearCutoff> findAll() { return records.findAllByOrderByAcademicYearDesc(); }
+    public org.springframework.data.domain.Page<PastYearCutoff> findPage(org.springframework.data.domain.Pageable page) {
+        return records.findAll(page);
+    }
 
     public static void validate(CutoffRequest r) {
         Double[] values = {r.cutoffA(), r.cutoffAMinus(), r.cutoffB(), r.cutoffBMinus(), r.cutoffC(), r.cutoffD()};

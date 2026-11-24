@@ -35,11 +35,13 @@
             <td>
                 <a th:href="@{/admin/polls/{id}/responses(id=${p.pollId()})}">Distribution</a>
                 <form class="inline" th:if="${p.open()}" th:action="@{/admin/polls/{id}/close(id=${p.pollId()})}" method="post">
+                    <input type="hidden" name="page" th:value="${polls.number}">
                     <button type="submit" class="secondary">Close</button>
                 </form>
             </td>
         </tr>
     </table></div>
+    <nav th:replace="~{layout :: pager(${polls}, @{/admin/polls}, 'page')}"></nav>
 </main>
 <div th:replace="~{layout :: footer}"></div></body>
 </html>

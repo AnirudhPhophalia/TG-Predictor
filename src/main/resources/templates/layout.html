@@ -15,5 +15,12 @@
 </nav><form th:action="@{/logout}" method="post" class="logout"><button type="submit" class="header-button">Sign out</button></form></div>
 </header>
 <div th:fragment="flash" aria-live="polite"><div class="success" th:if="${success}" th:text="${success}"></div><div class="failure" th:if="${failure}" th:text="${failure}"></div><div class="failure" th:if="${errors}"><ul><li th:each="e : ${errors}" th:text="${e}"></li></ul></div></div>
+<nav th:fragment="pager(items, url, key)" class="pager" th:if="${items.totalPages > 1}" aria-label="Pages">
+<th:block th:with="link=${url + (#strings.contains(url, '?') ? '&' : '?') + key + '='}, first=${items.number > 2 ? items.number - 2 : 0}, last=${items.number + 2 < items.totalPages ? items.number + 2 : items.totalPages - 1}">
+<a class="pager-step" th:if="${items.hasPrevious()}" th:href="${link + (items.number - 1)}" rel="prev">&larr; Previous</a>
+<span class="pager-numbers"><th:block th:each="i : ${#numbers.sequence(first, last)}"><b th:if="${i == items.number}" aria-current="page" th:text="${i + 1}">1</b><a th:unless="${i == items.number}" th:href="${link + i}" th:text="${i + 1}" th:attr="aria-label='Page ' + ${i + 1}">2</a></th:block></span>
+<a class="pager-step" th:if="${items.hasNext()}" th:href="${link + (items.number + 1)}" rel="next">Next &rarr;</a>
+<span class="pager-info" th:text="'Page ' + ${items.number + 1} + ' of ' + ${items.totalPages} + ' · ' + ${items.totalElements} + ' in total'">Page 1 of 2</span>
+</th:block></nav>
 <footer th:fragment="footer" class="site-footer"><span>Thapar Grade Predictor</span><span>Built for clarity. Designed for privacy.</span><span>Student initiative · Estimates, not official results</span></footer>
 </body></html>

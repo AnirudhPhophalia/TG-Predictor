@@ -23,16 +23,19 @@
             <td>
                 <div th:if="${r.status().name() == 'PENDING'}">
                     <form class="inline" th:action="@{/admin/edit-requests/{id}/approve(id=${r.id()})}" method="post">
+                        <input type="hidden" name="page" th:value="${requests.number}">
                         <button type="submit">Approve Unlock</button>
                     </form>
                     <form class="inline" th:action="@{/admin/edit-requests/{id}/reject(id=${r.id()})}" method="post">
+                        <input type="hidden" name="page" th:value="${requests.number}">
                         <input type="text" name="reason" placeholder="Rejection reason">
                         <button type="submit" class="danger">Reject</button>
                     </form>
                 </div>
             </td>
         </tr>
-    </table></div>
+    </table>
+    <nav th:replace="~{layout :: pager(${requests}, @{/admin/edit-requests}, 'page')}"></nav>
 </main>
 <div th:replace="~{layout :: footer}"></div></body>
 </html>

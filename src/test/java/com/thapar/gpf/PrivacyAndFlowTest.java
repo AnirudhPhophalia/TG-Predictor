@@ -342,4 +342,46 @@ class PrivacyAndFlowTest {
         mvc.perform(get("/admin/export").param("format", "pdf").with(user("aarav@thapar.edu").roles("STUDENT")))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @Order(14)
+    void longListsArePagedAndKeepTheirPageAndFilters() throws Exception {
+        var admin = user("admin@thapar.edu").roles("ADMIN");
+        var codes = subjectRepository.findAllByOrderByCodeAsc().stream().map(s -> s.getCode()).toList();
+        int pages = (codes.size() + 14) / 15;
+
+        String first = mvc.perform(get("/admin/subjects").with(admin)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(first.contains(">" + codes.get(0) + "<"));
+        assertFalse(first.contains(">" + codes.get(15) + "<"), "page 1 shows only 15 subjects");
+        assertTrue(first.contains("Page 1 of " + pages));
+
+        String second = mvc.perform(get("/admin/subjects").param("page", "1").with(admin))
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(second.contains(">" + codes.get(15) + "<"));
+        assertFalse(second.contains(">" + codes.get(0) + "<"));
+
+        // a page past the end shows the last page
+        mvc.perform(get("/admin/subjects").param("page", "999").with(admin))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Page " + pages + " of " + pages)));
+
+        // an action on page 3 returns to page 3
+        Long id = subjectRepository.findAllByOrderByCodeAsc().get(30).getId();
+        for (int i = 0; i < 2; i++) {
+            mvc.perform(post("/admin/subjects/" + id + "/toggle").param("page", "2").with(admin).with(csrf()))
+                    .andExpect(redirectedUrl("/admin/subjects?page=2"));
+        }
+
+        // both lists on the cutoffs page have their own pager
+        mvc.perform(get("/admin/cutoffs").param("page", "3").with(admin)).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("historyPage=0&amp;page=4")));
+
+        // the student's search and semester filter survive moving to the next page
+        mvc.perform(get("/student/subjects").param("search", "U").with(user("aarav@thapar.edu").roles("STUDENT")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("search=U&amp;semester=&amp;page=1")));
+        for (String path : List.of("/admin/users", "/admin/edit-requests", "/admin/polls", "/admin/analytics?page=3")) {
+            mvc.perform(get(path).with(admin)).andExpect(status().isOk());
+        }
+    }
 }

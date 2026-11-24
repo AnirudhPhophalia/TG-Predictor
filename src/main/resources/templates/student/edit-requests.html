@@ -21,7 +21,8 @@
                    th:href="@{/student/submit/{id}(id=${r.mark.subject.id})}">Update Marks Now</a>
             </td>
         </tr>
-    </table></div>
+    </table>
+    <nav th:replace="~{layout :: pager(${requests}, @{/student/edit-requests}, 'page')}"></nav>
     <p><a th:href="@{/student}">&larr; Back to dashboard</a></p>
 </main>
 <div th:replace="~{layout :: footer}"></div></body>

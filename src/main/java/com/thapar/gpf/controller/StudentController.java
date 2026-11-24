@@ -13,6 +13,7 @@ import com.thapar.gpf.service.PollService;
 import com.thapar.gpf.service.SubjectService;
 import com.thapar.gpf.service.UserService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -46,32 +47,33 @@ public class StudentController {
     }
 
     @GetMapping
-    public String dashboard(Principal principal, Model model, @RequestParam(required = false) Integer semester) {
+    public String dashboard(Principal principal, Model model, @RequestParam(required = false) Integer semester,
+                            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "0") int open) {
         User student = userService.getByEmail(principal.getName());
 
         List<Mark> myMarks = marksService.findMyMarks(student.getId());
-        List<SubmissionRow> rows = myMarks.stream()
-                .map(m -> new SubmissionRow(m, subjectService.statsFor(m.getSubject())))
-                .toList();
+        Page<SubmissionRow> rows = Pages.of(myMarks.stream()
+                        .filter(m -> semester == null || semester.equals(m.getSubject().getSemester()))
+                        .toList(), page, 6)
+                .map(m -> new SubmissionRow(m, subjectService.statsFor(m.getSubject())));
 
         Set<Long> submittedSubjectIds = myMarks.stream()
                 .map(m -> m.getSubject().getId())
                 .collect(Collectors.toSet());
-        List<SubjectStatDTO> openSubjects = subjectService.findActive().stream()
-                .filter(s -> !submittedSubjectIds.contains(s.getId()))
-                .map(subjectService::statsFor)
-                .toList();
+        Page<SubjectStatDTO> openSubjects = Pages.of(subjectService.findActive().stream()
+                        .filter(s -> !submittedSubjectIds.contains(s.getId()))
+                        .toList(), open, 8)
+                .map(subjectService::statsFor);
 
         model.addAttribute("student", student);
         model.addAttribute("rows", rows);
         model.addAttribute("openSubjects", openSubjects);
-        model.addAttribute("totalSubmissions", rows.size());
+        model.addAttribute("totalSubmissions", myMarks.size());
         model.addAttribute("activeSubjects", subjectService.findActive().size());
         model.addAttribute("averageGrade", myMarks.stream().mapToInt(m -> switch (m.getPredictedGrade()) {
             case A -> 10; case A_MINUS -> 9; case B -> 8; case B_MINUS -> 7; case C -> 6; case D -> 5; case E -> 0;
         }).average().orElse(0));
         model.addAttribute("selectedSemester", semester);
-        model.addAttribute("rows", rows.stream().filter(r -> semester == null || semester.equals(r.mark().getSubject().getSemester())).toList());
         return "student/dashboard";
     }
 
@@ -135,16 +137,17 @@ public class StudentController {
     }
 
     @GetMapping("/edit-requests")
-    public String editRequests(Principal principal, Model model) {
+    public String editRequests(Principal principal, @RequestParam(defaultValue = "0") int page, Model model) {
         User student = userService.getByEmail(principal.getName());
-        model.addAttribute("requests", editRequestService.findMine(student.getId()));
+        model.addAttribute("requests", Pages.fetch(page, 10, Pages.NEWEST_FIRST,
+                pageable -> editRequestService.findMine(student.getId(), pageable)));
         return "student/edit-requests";
     }
 
     @GetMapping("/polls")
-    public String polls(Principal principal, Model model) {
+    public String polls(Principal principal, @RequestParam(defaultValue = "0") int page, Model model) {
         User student = userService.getByEmail(principal.getName());
-        var polls = pollService.findAllPolls();
+        var polls = Pages.fetch(page, 5, Pages.NEWEST_FIRST, pollService::findPolls);
         var predictions = new java.util.HashMap<Long, com.thapar.gpf.service.GradePredictionService.Prediction>();
         polls.forEach(p -> pollService.myPrediction(p.getId(), student.getId()).ifPresent(result -> predictions.put(p.getId(), result)));
         model.addAttribute("predictions", predictions);
@@ -173,13 +176,14 @@ public class StudentController {
 
     @GetMapping("/subjects")
     public String subjects(@RequestParam(defaultValue = "") String search,
-                            @RequestParam(required = false) Integer semester, Model model) {
+                            @RequestParam(required = false) Integer semester,
+                            @RequestParam(defaultValue = "0") int page, Model model) {
         model.addAttribute("search", search);
         model.addAttribute("selectedSemester", semester);
-        model.addAttribute("subjects", subjectService.findActive().stream()
+        model.addAttribute("subjects", Pages.of(subjectService.findActive().stream()
                 .filter(s -> semester == null || semester.equals(s.getSemester()))
                 .filter(s -> (s.getCode() + " " + s.getName() + " " + s.getBranch()).toLowerCase(java.util.Locale.ROOT)
-                        .contains(search.toLowerCase(java.util.Locale.ROOT))).toList());
+                        .contains(search.toLowerCase(java.util.Locale.ROOT))).toList(), page, 12));
         return "student/subjects";
     }
 
@@ -188,6 +192,7 @@ public class StudentController {
 
     @PostMapping("/polls/{pollId}/respond")
     public String respond(@PathVariable Long pollId, @RequestParam Double marks,
+                          @RequestParam(defaultValue = "0") int page,
                           Principal principal, RedirectAttributes redirect) {
         User student = userService.getByEmail(principal.getName());
         try {
@@ -196,7 +201,7 @@ public class StudentController {
         } catch (BadRequestException e) {
             redirect.addFlashAttribute("failure", e.getMessage());
         }
-        return "redirect:/student/polls";
+        return "redirect:/student/polls?page=" + page;
     }
 
     private static MarksSubmissionRequest emptyRequest() {

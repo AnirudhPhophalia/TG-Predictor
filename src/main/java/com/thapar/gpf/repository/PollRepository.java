@@ -8,7 +8,6 @@ import java.util.List;
 
 public interface PollRepository extends JpaRepository<Poll, Long> {
 
-    List<Poll> findAllByOrderByCreatedAtDesc();
 
     List<Poll> findByActiveTrueAndEndTimeAfterOrderByEndTimeAsc(LocalDateTime now);
 

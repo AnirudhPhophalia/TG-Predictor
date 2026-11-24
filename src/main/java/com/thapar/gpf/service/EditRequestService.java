@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 public class EditRequestService {
@@ -56,8 +55,8 @@ public class EditRequestService {
         return editRequestRepository.save(request);
     }
 
-    public List<EditRequest> findMine(Long studentId) {
-        return editRequestRepository.findByUserIdOrderByCreatedAtDesc(studentId);
+    public org.springframework.data.domain.Page<EditRequest> findMine(Long studentId, org.springframework.data.domain.Pageable page) {
+        return editRequestRepository.findByUserId(studentId, page);
     }
 
     public boolean hasPending(Long markId) {
@@ -66,8 +65,8 @@ public class EditRequestService {
 
     // ---------- admin side (marks are never copied into the view) ----------
 
-    public List<AdminEditRequestView> findAllForAdmin() {
-        return editRequestRepository.findAllByOrderByCreatedAtDesc().stream()
+    public org.springframework.data.domain.Page<AdminEditRequestView> findForAdmin(org.springframework.data.domain.Pageable page) {
+        return editRequestRepository.findAll(page)
                 .map(r -> new AdminEditRequestView(
                         r.getId(),
                         r.getUser().getName(),
@@ -77,8 +76,7 @@ public class EditRequestService {
                         r.getReason(),
                         r.getStatus(),
                         r.getRejectionReason(),
-                        r.getCreatedAt()))
-                .toList();
+                        r.getCreatedAt()));
     }
 
     @Transactional

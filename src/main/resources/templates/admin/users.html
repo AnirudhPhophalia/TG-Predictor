@@ -20,6 +20,7 @@
             <td><span class="badge" th:text="${u.email().equalsIgnoreCase(adminEmail) ? 'Configured administrator' : 'Student access'}"></span></td>
         </tr>
     </table></div>
+    <nav th:replace="~{layout :: pager(${users}, @{/admin/users}, 'page')}"></nav>
     <p class="muted">Marks are private to each student and are not available here.</p>
 </main>
 <div th:replace="~{layout :: footer}"></div></body>

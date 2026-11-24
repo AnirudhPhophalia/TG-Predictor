@@ -10,7 +10,7 @@ public interface EditRequestRepository extends JpaRepository<EditRequest, Long> 
 
     List<EditRequest> findByUserIdOrderByCreatedAtDesc(Long userId);
 
-    List<EditRequest> findAllByOrderByCreatedAtDesc();
+    org.springframework.data.domain.Page<EditRequest> findByUserId(Long userId, org.springframework.data.domain.Pageable page);
 
     boolean existsByMarkIdAndStatus(Long markId, EditStatus status);
 

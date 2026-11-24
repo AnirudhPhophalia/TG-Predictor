@@ -11,6 +11,7 @@ import com.thapar.gpf.service.PollService;
 import com.thapar.gpf.service.SubjectService;
 import com.thapar.gpf.service.UserService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -64,8 +65,10 @@ public class AdminController {
     }
 
     @GetMapping("/analytics")
-    public String analytics(Model model) {
-        model.addAttribute("report", analyticsService.buildReport());
+    public String analytics(@RequestParam(defaultValue = "0") int page, Model model) {
+        var report = analyticsService.buildReport();
+        model.addAttribute("report", report);
+        model.addAttribute("subjectStats", Pages.of(report.subjectStats(), page, 15));
         return "admin/analytics";
     }
 
@@ -81,8 +84,9 @@ public class AdminController {
     // ---------- subjects ----------
 
     @GetMapping("/subjects")
-    public String subjects(@RequestParam(required = false) Long edit, Model model) {
-        model.addAttribute("subjects", subjectService.findAll());
+    public String subjects(@RequestParam(required = false) Long edit,
+                           @RequestParam(defaultValue = "0") int page, Model model) {
+        model.addAttribute("subjects", Pages.fetch(page, 15, Sort.by("code"), subjectService::findPage));
         Subject editing = edit == null ? null : subjectService.get(edit);
         model.addAttribute("editing", editing);
         model.addAttribute("form", editing == null
@@ -107,32 +111,35 @@ public class AdminController {
     @PostMapping("/subjects/{id}")
     public String updateSubject(@PathVariable Long id,
                                 @Valid @ModelAttribute("form") SubjectRequest form,
-                                BindingResult result, RedirectAttributes redirect) {
+                                BindingResult result, @RequestParam(defaultValue = "0") int page,
+                                RedirectAttributes redirect) {
         if (result.hasErrors()) {
             redirect.addFlashAttribute("failure", Messages.first(result));
-            return "redirect:/admin/subjects?edit=" + id;
+            return "redirect:/admin/subjects?edit=" + id + "&page=" + page;
         }
         subjectService.update(id, form);
         redirect.addFlashAttribute("success", "Subject updated.");
-        return "redirect:/admin/subjects";
+        return "redirect:/admin/subjects?page=" + page;
     }
 
     @PostMapping("/subjects/{id}/toggle")
-    public String toggleSubject(@PathVariable Long id, RedirectAttributes redirect) {
+    public String toggleSubject(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
+                                RedirectAttributes redirect) {
         subjectService.toggleActive(id);
         redirect.addFlashAttribute("success", "Subject status changed.");
-        return "redirect:/admin/subjects";
+        return "redirect:/admin/subjects?page=" + page;
     }
 
     // ---------- fallback cutoffs ----------
 
     @GetMapping("/cutoffs")
-    public String cutoffs(Model model) {
-        model.addAttribute("history", history.findAll());
+    public String cutoffs(@RequestParam(defaultValue = "0") int page,
+                          @RequestParam(defaultValue = "0") int historyPage, Model model) {
+        model.addAttribute("history", Pages.fetch(historyPage, 10,
+                Sort.by(Sort.Direction.DESC, "academicYear").and(Sort.by("subject.code")), history::findPage));
         model.addAttribute("currentYear", java.time.Year.now().getValue());
-        model.addAttribute("cutoffs", subjectService.findAll().stream()
-                .map(subjectService::getCutoff)
-                .toList());
+        model.addAttribute("cutoffs", Pages.fetch(page, 5, Sort.by("code"),
+                pageable -> subjectService.findPage(pageable).map(subjectService::getCutoff)));
         return "admin/cutoffs";
     }
 
@@ -141,21 +148,21 @@ public class AdminController {
                               @Valid @ModelAttribute CutoffRequest request,
                               BindingResult result, @RequestParam int academicYear,
                               @RequestParam(defaultValue = "false") boolean useForPredictions,
-                              RedirectAttributes redirect) {
+                              @RequestParam(defaultValue = "0") int page, RedirectAttributes redirect) {
         if (result.hasErrors()) {
             redirect.addFlashAttribute("failure", Messages.first(result));
-            return "redirect:/admin/cutoffs";
+            return "redirect:/admin/cutoffs?page=" + page;
         }
         history.save(subjectId, academicYear, request, useForPredictions);
         redirect.addFlashAttribute("success", "Cutoffs saved.");
-        return "redirect:/admin/cutoffs";
+        return "redirect:/admin/cutoffs?page=" + page;
     }
 
     // ---------- users ----------
 
     @GetMapping("/users")
-    public String users(Model model) {
-        model.addAttribute("users", userService.findAllSummaries());
+    public String users(@RequestParam(defaultValue = "0") int page, Model model) {
+        model.addAttribute("users", Pages.fetch(page, 15, Pages.NEWEST_FIRST, userService::findSummaries));
         model.addAttribute("adminEmail", adminEmail);
         return "admin/users";
     }
@@ -187,31 +194,32 @@ public class AdminController {
     // ---------- unlock requests ----------
 
     @GetMapping("/edit-requests")
-    public String editRequests(Model model) {
-        model.addAttribute("requests", editRequestService.findAllForAdmin());
+    public String editRequests(@RequestParam(defaultValue = "0") int page, Model model) {
+        model.addAttribute("requests", Pages.fetch(page, 10, Pages.NEWEST_FIRST, editRequestService::findForAdmin));
         return "admin/edit-requests";
     }
 
     @PostMapping("/edit-requests/{id}/approve")
-    public String approve(@PathVariable Long id, RedirectAttributes redirect) {
+    public String approve(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
+                          RedirectAttributes redirect) {
         editRequestService.approve(id);
         redirect.addFlashAttribute("success", "Unlock approved. The student can now update their marks.");
-        return "redirect:/admin/edit-requests";
+        return "redirect:/admin/edit-requests?page=" + page;
     }
 
     @PostMapping("/edit-requests/{id}/reject")
     public String reject(@PathVariable Long id, @RequestParam(required = false) String reason,
-                         RedirectAttributes redirect) {
+                         @RequestParam(defaultValue = "0") int page, RedirectAttributes redirect) {
         editRequestService.reject(id, reason);
         redirect.addFlashAttribute("success", "Request rejected.");
-        return "redirect:/admin/edit-requests";
+        return "redirect:/admin/edit-requests?page=" + page;
     }
 
     // ---------- polls ----------
 
     @GetMapping("/polls")
-    public String polls(Model model) {
-        model.addAttribute("polls", pollService.summarizeAll());
+    public String polls(@RequestParam(defaultValue = "0") int page, Model model) {
+        model.addAttribute("polls", Pages.fetch(page, 10, Pages.NEWEST_FIRST, pollService::summarize));
         model.addAttribute("subjects", subjectService.findActive());
         return "admin/polls";
     }
@@ -225,10 +233,11 @@ public class AdminController {
     }
 
     @PostMapping("/polls/{id}/close")
-    public String closePoll(@PathVariable Long id, RedirectAttributes redirect) {
+    public String closePoll(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
+                            RedirectAttributes redirect) {
         pollService.close(id);
         redirect.addFlashAttribute("success", "Poll closed.");
-        return "redirect:/admin/polls";
+        return "redirect:/admin/polls?page=" + page;
     }
 
     // aggregate numbers only: count, average, median, highest, lowest, buckets
