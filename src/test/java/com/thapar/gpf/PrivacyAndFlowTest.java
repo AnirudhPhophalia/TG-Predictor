@@ -272,10 +272,11 @@ class PrivacyAndFlowTest {
         assertFalse(ucs301.contains("80.5"));
         assertFalse(ucs301.contains("50"));
 
-        // while the student still sees class statistics (including their own contribution)
+        // The student still sees their own mark, but not aggregate class statistics.
         Mark mark = markRepository.findByUserIdAndSubjectId(userId("aarav@thapar.edu"), subjectId()).orElseThrow();
         mvc.perform(get("/student/marks/" + mark.getId()).with(user("aarav@thapar.edu").roles("STUDENT")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("65.25")));   // (80.5 + 50) / 2
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("80.5")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("65.25"))));
     }
 
     /** Structural guard: the admin controller must not be able to reach individual marks at all. */

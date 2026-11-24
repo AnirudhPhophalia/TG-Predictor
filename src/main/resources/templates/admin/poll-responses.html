@@ -10,6 +10,7 @@
 
     <div class="card" th:if="${summary.hidden()}">
         <b th:text="${summary.responses()}">0</b> response(s) so far.
+        <p class="small muted">Detailed statistics appear after at least 5 responses.</p>
     </div>
 
     <div class="cards" th:unless="${summary.hidden()}">
