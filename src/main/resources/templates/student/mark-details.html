@@ -26,7 +26,7 @@
             Marks below 35 are always an E.</p>
     </div>
 
-    <div class="card">
+    <!-- <div class="card">
         <h2>Class statistics</h2>
         <div class="table-scroll"><table>
             <tr><th>Average</th><td th:text="${#numbers.formatDecimal(stats.average(), 1, 2)}">0</td>
@@ -44,7 +44,7 @@
             <span class="label" th:text="${i.index * 10} + '-' + ${i.index * 10 + 10}">0-10</span>
             <div class="bar" th:style="'width:' + ${stats.totalResponses() == 0 ? 0 : count * 100.0 / stats.totalResponses()} + '%'"></div>
         </div>
-    </div>
+    </div> -->
 
     <div class="card">
         <h2>My breakdown</h2>
@@ -72,7 +72,7 @@
             <a class="button secondary" th:href="@{/student/edit-requests}">View my requests</a>
         </div>
         <form th:if="${mark.locked and !hasPendingRequest}" th:action="@{/student/marks/{id}/unlock-request(id=${mark.id})}" method="post">
-            <p class="muted">Marks are locked after submission. The admin will see only your reason, never your marks.</p>
+            <p class="muted">Marks are locked after submission.</p>
             <label for="reason">Reason</label>
             <textarea name="reason" rows="3" maxlength="500" placeholder="e.g. MST marks were re-evaluated" required id="reason"></textarea>
             <button type="submit">Request Unlock</button>

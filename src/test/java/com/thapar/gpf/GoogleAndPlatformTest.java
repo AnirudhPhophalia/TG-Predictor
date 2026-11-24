@@ -20,6 +20,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
@@ -74,6 +75,28 @@ class GoogleAndPlatformTest {
         assertNull(UserService.semesterOn(2024, java.time.LocalDate.of(2024, 3, 1)));
         assertNull(UserService.semesterOn(2024, java.time.LocalDate.of(2028, 9, 1)));
         assertNull(UserService.semesterOn(null, java.time.LocalDate.of(2026, 11, 24)));
+    }
+
+    @Test
+    void studentCannotOpenOrSubmitMarksForFutureSemesterSubjects() throws Exception {
+        int admissionYear = LocalDate.now().getYear() - 2;
+        String email = String.format("future_be_%02d@thapar.edu", admissionYear % 100);
+        google.provision(identity(email, true, "thapar.edu"));
+        var student = users.getByEmail(email);
+        Integer currentSemester = UserService.currentSemester(student);
+        var futureSubject = subjects.findActive().stream()
+                .filter(subject -> subject.getSemester() != null && subject.getSemester() > currentSemester)
+                .findFirst().orElseThrow();
+
+        mvc.perform(get("/student/submit/" + futureSubject.getId()).with(user(email).roles("STUDENT")))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/student"));
+        mvc.perform(post("/student/submit/" + futureSubject.getId()).with(user(email).roles("STUDENT")).with(csrf())
+                        .param("totalMarks", "80"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/student"));
+
+        assertTrue(marks.findMyMarkForSubject(student.getId(), futureSubject.getId()).isEmpty());
     }
 
     @Test

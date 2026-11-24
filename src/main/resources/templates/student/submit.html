@@ -18,10 +18,10 @@
                    th:value="${form?.totalMarks()}" id="totalMarks">
 
             <h3>Optional breakdown</h3>
-            <label for="estMarks">End semester exam - EST (0 - 30)</label>
+            <label for="estMarks">Mid semester exam - EST (0 - 30)</label>
             <input type="number" name="estMarks" step="0.01" min="0" max="30" th:value="${form?.estMarks()}" id="estMarks">
 
-            <label for="mstMarks">Mid semester exam - MST (0 - 40)</label>
+            <label for="mstMarks">End semester exam - MST (0 - 40)</label>
             <input type="number" name="mstMarks" step="0.01" min="0" max="40" th:value="${form?.mstMarks()}" id="mstMarks">
 
             <label for="quizMarks">Quizzes (0 - 10)</label>

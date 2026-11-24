@@ -10,7 +10,7 @@
 <a class="skip-link" href="#main">Skip to content</a>
 <div class="header-inner"><a th:href="@{/}" class="brand"><span class="brand-symbol">GP</span><span>Grade Predictor<small>THAPAR INSTITUTE</small></span></a>
 <nav aria-label="Main navigation" class="main-nav">
-<th:block sec:authorize="hasRole('STUDENT')"><a th:href="@{/student}">Overview</a><a th:href="@{/student/subjects}">Subjects</a><a th:href="@{/student/polls}">Polls</a><a th:href="@{/student/edit-requests}">Requests</a><a th:href="@{/student/profile}">Profile</a><a th:href="@{/student/help}">Help</a></th:block>
+<th:block sec:authorize="hasRole('STUDENT')"><a th:href="@{/student}">Overview</a><a th:href="@{/student/subjects}">Subjects</a><a th:href="@{/student/polls}">Polls</a><a th:href="@{/student/edit-requests}">Requests</a><a th:href="@{/student/profile}">Profile</a></th:block>
 <th:block sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin}">Overview</a><a th:href="@{/admin/subjects}">Subjects</a><a th:href="@{/admin/cutoffs}">Cutoffs</a><a th:href="@{/admin/users}">Users</a><a th:href="@{/admin/edit-requests}">Requests</a><a th:href="@{/admin/polls}">Polls</a><a th:href="@{/admin/analytics}">Analytics</a><a th:href="@{/admin/settings}">Settings</a></th:block>
 </nav><form th:action="@{/logout}" method="post" class="logout"><button type="submit" class="header-button">Sign out</button></form></div>
 </header>

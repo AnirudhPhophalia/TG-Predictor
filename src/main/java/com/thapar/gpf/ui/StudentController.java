@@ -87,6 +87,11 @@ public class StudentController {
         User student = userService.getByEmail(principal.getName());
         Subject subject = subjectService.get(subjectId);
 
+        if (isFutureSemester(subject, UserService.currentSemester(student))) {
+            redirect.addFlashAttribute("failure", "You can submit marks only for subjects in your current or earlier semesters.");
+            return "redirect:/student";
+        }
+
         Optional<Mark> existing = marksService.findMyMarkForSubject(student.getId(), subjectId);
         if (existing.isPresent() && existing.get().isLocked()) {
             redirect.addFlashAttribute("failure", "Your marks are locked. Send an unlock request to change them.");
@@ -105,9 +110,15 @@ public class StudentController {
                          BindingResult result, Principal principal,
                          Model model, RedirectAttributes redirect) {
         User student = userService.getByEmail(principal.getName());
+        Subject subject = subjectService.get(subjectId);
+
+        if (isFutureSemester(subject, UserService.currentSemester(student))) {
+            redirect.addFlashAttribute("failure", "You can submit marks only for subjects in your current or earlier semesters.");
+            return "redirect:/student";
+        }
 
         if (result.hasErrors()) {
-            model.addAttribute("subject", subjectService.get(subjectId));
+            model.addAttribute("subject", subject);
             model.addAttribute("errors", FormErrors.of(result));
             model.addAttribute("updating", false);
             return "student/submit";
@@ -227,6 +238,11 @@ public class StudentController {
 
     private static boolean inSemester(Subject subject, int semester) {
         return semester == 0 || Integer.valueOf(semester).equals(subject.getSemester());
+    }
+
+    private static boolean isFutureSemester(Subject subject, Integer currentSemester) {
+        return currentSemester != null && subject.getSemester() != null
+                && subject.getSemester() > currentSemester;
     }
 
     private static MarksSubmissionRequest emptyRequest() {
