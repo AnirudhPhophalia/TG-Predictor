@@ -17,10 +17,12 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
@@ -97,6 +99,34 @@ class GoogleAndPlatformTest {
                 .andExpect(redirectedUrl("/student"));
 
         assertTrue(marks.findMyMarkForSubject(student.getId(), futureSubject.getId()).isEmpty());
+    }
+
+    @Test
+    void adminCanImportFallbackCutoffsBySubjectCodeWithoutChangingUnlistedSubjects() throws Exception {
+        var active = subjects.findActive();
+        var target = active.get(0);
+        var unlisted = active.get(1);
+        double unlistedCutoffA = subjects.getCutoff(unlisted).getCutoffA();
+
+        String json = """
+                {"historicalCutoffs":[{"subjectCode":"%s","cutoffA":90,"cutoffAMinus":80,
+                "cutoffB":70,"cutoffBMinus":60,"cutoffC":50,"cutoffD":40}]}
+                """.formatted(target.getCode());
+        var upload = new MockMultipartFile("file", "cutoffs.json", "application/json",
+                json.getBytes(StandardCharsets.UTF_8));
+
+        mvc.perform(multipart("/admin/cutoffs/import").file(upload)
+                        .with(user("admin@thapar.edu").roles("ADMIN")).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/cutoffs"))
+                .andExpect(flash().attribute("success", org.hamcrest.Matchers.containsString("1 subjects")));
+
+        assertEquals(90, subjects.getCutoff(target).getCutoffA());
+        assertEquals(unlistedCutoffA, subjects.getCutoff(unlisted).getCutoffA());
+
+        mvc.perform(multipart("/admin/cutoffs/import").file(upload)
+                        .with(user("student@thapar.edu").roles("STUDENT")).with(csrf()))
+                .andExpect(status().isForbidden());
     }
 
     @Test
