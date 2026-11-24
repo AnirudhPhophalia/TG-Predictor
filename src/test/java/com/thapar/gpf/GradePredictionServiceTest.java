@@ -1,10 +1,10 @@
 package com.thapar.gpf;
 
-import com.thapar.gpf.model.Grade;
-import com.thapar.gpf.model.HistoricalCutoff;
-import com.thapar.gpf.service.GradePredictionService;
-import com.thapar.gpf.service.GradePredictionService.Prediction;
-import com.thapar.gpf.service.GradePredictionService.Stats;
+import com.thapar.gpf.database.tables.Grade;
+import com.thapar.gpf.database.tables.FallbackCutoff;
+import com.thapar.gpf.backend.service.GradePredictionService;
+import com.thapar.gpf.backend.service.GradePredictionService.Prediction;
+import com.thapar.gpf.backend.service.GradePredictionService.Stats;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class GradePredictionServiceTest {
 
     private final GradePredictionService service = new GradePredictionService();
-    private final HistoricalCutoff defaults = new HistoricalCutoff();
+    private final FallbackCutoff defaults = new FallbackCutoff();
 
     /** 100 students scoring 36.0, 36.5 ... 85.5: the student with score 36 + k/2 has exactly k students below. */
     private List<Double> cohortOf100() {
@@ -82,7 +82,7 @@ class GradePredictionServiceTest {
 
     @Test
     void customCutoffsAreRespected() {
-        HistoricalCutoff hard = new HistoricalCutoff();
+        FallbackCutoff hard = new FallbackCutoff();
         hard.setCutoffA(95);
         assertEquals(Grade.A_MINUS, service.predict(90, List.of(90.0), hard).grade());
     }

@@ -1,14 +1,14 @@
 package com.thapar.gpf;
 
-import com.thapar.gpf.config.InstituteOidcUserService;
-import com.thapar.gpf.dto.CutoffRequest;
-import com.thapar.gpf.dto.MarksSubmissionRequest;
-import com.thapar.gpf.exception.BadRequestException;
-import com.thapar.gpf.model.Grade;
-import com.thapar.gpf.model.Role;
-import com.thapar.gpf.repository.PastYearCutoffRepository;
-import com.thapar.gpf.repository.UserRepository;
-import com.thapar.gpf.service.*;
+import com.thapar.gpf.login.GoogleLoginService;
+import com.thapar.gpf.backend.dto.CutoffRequest;
+import com.thapar.gpf.backend.dto.MarksSubmissionRequest;
+import com.thapar.gpf.backend.exception.BadRequestException;
+import com.thapar.gpf.database.tables.Grade;
+import com.thapar.gpf.database.tables.Role;
+import com.thapar.gpf.database.repository.PastYearCutoffRepository;
+import com.thapar.gpf.database.repository.UserRepository;
+import com.thapar.gpf.backend.service.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -33,12 +33,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 class GoogleAndPlatformTest {
-    @Autowired InstituteOidcUserService google;
+    @Autowired GoogleLoginService google;
     @Autowired UserService users;
     @Autowired UserRepository userRepository;
     @Autowired SubjectService subjects;
     @Autowired MarksService marks;
-    @Autowired CutoffHistoryService history;
+    @Autowired PastYearCutoffService history;
     @Autowired PastYearCutoffRepository records;
     @Autowired PollService polls;
     @Autowired SettingsService settings;
@@ -62,6 +62,18 @@ class GoogleAndPlatformTest {
         assertNotNull(student.getLastLogin());
         assertEquals(2025, UserService.admissionYear("name.be_25@thapar.edu"));
         assertNull(UserService.admissionYear("faculty@thapar.edu"));
+    }
+
+    @Test
+    void semesterFollowsAdmissionYearAndDate() {
+        assertEquals(1, UserService.semesterOn(2024, java.time.LocalDate.of(2024, 8, 1)));
+        assertEquals(2, UserService.semesterOn(2024, java.time.LocalDate.of(2025, 1, 15)));
+        assertEquals(5, UserService.semesterOn(2024, java.time.LocalDate.of(2026, 11, 24)));
+        assertEquals(6, UserService.semesterOn(2024, java.time.LocalDate.of(2027, 6, 30)));
+        assertEquals(8, UserService.semesterOn(2024, java.time.LocalDate.of(2028, 3, 1)));
+        assertNull(UserService.semesterOn(2024, java.time.LocalDate.of(2024, 3, 1)));
+        assertNull(UserService.semesterOn(2024, java.time.LocalDate.of(2028, 9, 1)));
+        assertNull(UserService.semesterOn(null, java.time.LocalDate.of(2026, 11, 24)));
     }
 
     @Test
@@ -117,9 +129,9 @@ class GoogleAndPlatformTest {
 
     @Test
     void invalidCutoffsCannotBeStored() {
-        assertThrows(BadRequestException.class, () -> CutoffHistoryService.validate(new CutoffRequest(Double.NaN,75.0,65.0,55.0,45.0,35.0)));
-        assertThrows(BadRequestException.class, () -> CutoffHistoryService.validate(new CutoffRequest(85.0,85.0,65.0,55.0,45.0,35.0)));
-        assertThrows(BadRequestException.class, () -> CutoffHistoryService.validate(new CutoffRequest(85.0,75.0,65.0,55.0,45.0,20.0)));
+        assertThrows(BadRequestException.class, () -> PastYearCutoffService.validate(new CutoffRequest(Double.NaN,75.0,65.0,55.0,45.0,35.0)));
+        assertThrows(BadRequestException.class, () -> PastYearCutoffService.validate(new CutoffRequest(85.0,85.0,65.0,55.0,45.0,35.0)));
+        assertThrows(BadRequestException.class, () -> PastYearCutoffService.validate(new CutoffRequest(85.0,75.0,65.0,55.0,45.0,20.0)));
     }
 
     @Test

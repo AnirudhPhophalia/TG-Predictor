@@ -1,13 +1,13 @@
 package com.thapar.gpf;
 
-import com.thapar.gpf.controller.AdminController;
-import com.thapar.gpf.model.EditRequest;
-import com.thapar.gpf.model.EditStatus;
-import com.thapar.gpf.model.Mark;
-import com.thapar.gpf.repository.EditRequestRepository;
-import com.thapar.gpf.repository.MarkRepository;
-import com.thapar.gpf.repository.SubjectRepository;
-import com.thapar.gpf.repository.UserRepository;
+import com.thapar.gpf.ui.AdminController;
+import com.thapar.gpf.database.tables.UnlockRequest;
+import com.thapar.gpf.database.tables.UnlockStatus;
+import com.thapar.gpf.database.tables.Mark;
+import com.thapar.gpf.database.repository.UnlockRequestRepository;
+import com.thapar.gpf.database.repository.MarkRepository;
+import com.thapar.gpf.database.repository.SubjectRepository;
+import com.thapar.gpf.database.repository.UserRepository;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -44,7 +44,7 @@ class PrivacyAndFlowTest {
     @Autowired UserRepository userRepository;
     @Autowired SubjectRepository subjectRepository;
     @Autowired MarkRepository markRepository;
-    @Autowired EditRequestRepository editRequestRepository;
+    @Autowired UnlockRequestRepository unlockRequestRepository;
 
     private Long subjectId() {
         return subjectRepository.findAllByOrderByCodeAsc().stream()
@@ -84,7 +84,8 @@ class PrivacyAndFlowTest {
         mvc.perform(get("/student/marks/" + mark.getId()).with(user("riya@thapar.edu").roles("STUDENT")))
                 .andExpect(status().isNotFound());
 
-        mvc.perform(get("/student").with(user("aarav@thapar.edu").roles("STUDENT")))
+        // UCS301 is a semester 3 subject; aarav is in semester 5, so ask for semester 3 explicitly
+        mvc.perform(get("/student").param("semester", "3").with(user("aarav@thapar.edu").roles("STUDENT")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(SECRET)));
     }
@@ -99,8 +100,8 @@ class PrivacyAndFlowTest {
                         .param("reason", "MST re-evaluated"))
                 .andExpect(status().is3xxRedirection());
 
-        EditRequest request = editRequestRepository.findByUserIdOrderByCreatedAtDesc(userId("aarav@thapar.edu")).get(0);
-        assertEquals(EditStatus.PENDING, request.getStatus());
+        UnlockRequest request = unlockRequestRepository.findByUserIdOrderByCreatedAtDesc(userId("aarav@thapar.edu")).get(0);
+        assertEquals(UnlockStatus.PENDING, request.getStatus());
 
         // every admin page, with a pending request and a submitted mark in the system
         for (String path : List.of("/admin", "/admin/users", "/admin/edit-requests", "/admin/analytics",
@@ -146,12 +147,12 @@ class PrivacyAndFlowTest {
                 .with(user("riya@thapar.edu").roles("STUDENT")).with(csrf())
                 .param("reason", "typo again")).andExpect(status().isBadRequest());
 
-        EditRequest request = editRequestRepository.findByUserIdOrderByCreatedAtDesc(userId("riya@thapar.edu")).get(0);
+        UnlockRequest request = unlockRequestRepository.findByUserIdOrderByCreatedAtDesc(userId("riya@thapar.edu")).get(0);
         mvc.perform(post("/admin/edit-requests/" + request.getId() + "/reject")
                 .with(user("admin@thapar.edu").roles("ADMIN")).with(csrf())
                 .param("reason", "No proof")).andExpect(status().is3xxRedirection());
 
-        assertEquals(EditStatus.REJECTED, editRequestRepository.findById(request.getId()).orElseThrow().getStatus());
+        assertEquals(UnlockStatus.REJECTED, unlockRequestRepository.findById(request.getId()).orElseThrow().getStatus());
         assertTrue(markRepository.findById(mark.getId()).orElseThrow().isLocked());
     }
 
@@ -235,7 +236,7 @@ class PrivacyAndFlowTest {
 
         answer("riya@thapar.edu", pollId, "52.52");
         for (String extra : List.of("p1@thapar.edu", "p2@thapar.edu", "p3@thapar.edu")) {
-            var u = new com.thapar.gpf.model.User();
+            var u = new com.thapar.gpf.database.tables.User();
             u.setName("Poll Person " + extra);
             u.setEmail(extra);
             u.setPassword("x");
@@ -301,7 +302,7 @@ class PrivacyAndFlowTest {
         var student = user("aarav@thapar.edu").roles("STUDENT");
         mvc.perform(get("/student/profile").with(student)).andExpect(status().isOk());
         mvc.perform(get("/student/help").with(student)).andExpect(status().isOk());
-        mvc.perform(get("/student/subjects").with(student).param("search", "Data Structures"))
+        mvc.perform(get("/student/subjects").with(student).param("search", "Data Structures").param("semester", "0"))
                 .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("UCS301")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("UEC501"))));
         mvc.perform(post("/student/profile").with(student).with(csrf())
@@ -377,9 +378,15 @@ class PrivacyAndFlowTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("historyPage=0&amp;page=4")));
 
         // the student's search and semester filter survive moving to the next page
-        mvc.perform(get("/student/subjects").param("search", "U").with(user("aarav@thapar.edu").roles("STUDENT")))
+        mvc.perform(get("/student/subjects").param("search", "U").param("semester", "0")
+                        .with(user("aarav@thapar.edu").roles("STUDENT")))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("search=U&amp;semester=&amp;page=1")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("search=U&amp;semester=0&amp;page=1")));
+
+        // without a semester in the address the student sees their current one (test 12 set aarav's profile to 3)
+        mvc.perform(get("/student/subjects").with(user("aarav@thapar.edu").roles("STUDENT")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("UCS301")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("UML501"))));
         for (String path : List.of("/admin/users", "/admin/edit-requests", "/admin/polls", "/admin/analytics?page=3")) {
             mvc.perform(get(path).with(admin)).andExpect(status().isOk());
         }

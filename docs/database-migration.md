@@ -8,9 +8,9 @@ The legacy Prisma schema describes MongoDB collections with ObjectId keys. The J
 | Subject | subjects / Subject | Curriculum and active status. |
 | Mark | marks / Mark | Unique student/subject, optional breakdown and lock state. |
 | Statistics | subject_statistics / SubjectStatistics | Recomputed from imported marks, never trusted blindly. |
-| HistoricalCutoff | historical_cutoffs / HistoricalCutoff | Current fallback boundaries. |
+| HistoricalCutoff | historical_cutoffs / FallbackCutoff | Current fallback boundaries. |
 | New year archive | past_year_cutoffs / PastYearCutoff | Unique subject/year; no invented historical values. |
-| EditRequest | edit_requests / EditRequest | An approval unlocks the student's record; an admin never supplies replacement marks. |
+| EditRequest | edit_requests / UnlockRequest | An approval unlocks the student's record; an admin never supplies replacement marks. |
 | Poll / PollResponse | polls / Poll, poll_responses / PollResponse | One response per student/poll; manual boundaries belong to the poll. |
 | New settings | platform_settings / PlatformSettings | Maintenance mode, unlock requests and contact email. |
 

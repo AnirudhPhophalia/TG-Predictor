@@ -64,10 +64,10 @@ Prisma is an ORM, not a database. The original `prisma/schema.prisma` targets Mo
 ## Features
 
 - Verified institute Google login, admission-year detection, single-email admin access and student profile updates.
-- Search and semester filtering for subjects and personal submissions.
+- Search and semester filtering for subjects and personal submissions. Overview and Explore subjects open on the student's **current semester**, worked out from the admission year in the email (`be_24` means 2024) and today's date. Odd semesters run July to December, even ones January to June, so a 2024 student is in semester 5 in November 2026. Without a year in the email, the semester saved in the profile is used. **All semesters** shows everything.
 - One submission per student/subject, optional component marks, immediate locking and an admin-reviewed unlock flow.
 - Relative grading at 100 submissions, strict-lower percentile ranking, historical fallback and unconditional failure below 35.
-- Mean, median, mode, standard deviation, pass/fail rates, contribution indicator, grade counts and score histograms.
+- Mean, median, mode, standard deviation, pass/fail rates, a Low/Medium/High participation indicator and score histograms. Students never see how many responses a subject has.
 - Admin subject creation, editing and activation; persistent **year-labelled cutoff records**, optional activation and immediate prediction refresh.
 - Subject polls with deadlines, one answer per student, personal predictions, independent manual poll cutoffs and anonymous admin distributions.
 - Admin community metadata, unlock review, aggregate analytics and genuine CSV, Excel (XLSX) and PDF exports.
@@ -92,11 +92,11 @@ Past-year records start empty. The default grade boundaries are estimates, not v
 | Student → Unlock requests | 10 | database |
 | Student → Polls | 5 | database |
 
-`controller/Pages.java` has the two helpers. `Pages.fetch` asks the repository for one page through Spring Data's `Pageable`. `Pages.of` slices a list that Java has already filtered or computed. Both return a Spring Data `Page`, which the shared `pager` fragment in `templates/layout.html` renders. A page number past the end shows the last page.
+`ui/Pagination.java` has the two helpers. `Pagination.fetch` asks the repository for one page through Spring Data's `Pageable`. `Pagination.of` slices a list that Java has already filtered or computed. Both return a Spring Data `Page`, which the shared `pager` fragment in `templates/layout.html` renders. A page number past the end shows the last page.
 
 ## Privacy
 
-Students can view their own marks. Admin routes cannot load individual student submissions; analytics and exports expose aggregates, with suppression below five responses. Unlock review includes a name, subject and reason, not the marks. Database operators still have database-level access; this is application-level access control, not encryption or a cryptographic zero-knowledge system. With small cohorts, student-facing class statistics may also allow inferences.
+Students can view their own marks, but not how many classmates have submitted. Admin routes cannot load individual student submissions; analytics and exports expose aggregates, with suppression below five responses. Unlock review includes a name, subject and reason, not the marks. Database operators still have database-level access; this is application-level access control, not encryption or a cryptographic zero-knowledge system. With small cohorts, student-facing class statistics may also allow inferences.
 
 Predictions are community estimates and are not official results. The contribution indicator reaches 100% at 100 submissions; it is not a probability of prediction accuracy. Grade-point averages on the overview are unweighted estimates, not official CGPA.
 
@@ -112,21 +112,67 @@ java -jar target/thapar-gpf-1.0.0.jar
 
 ## Project structure
 
+The Java code is split into four parts. Each part only talks to the one below it:
+
+```text
+Browser ──> ui ──> backend ──> database
+              ^
+            login (checks who you are before any page opens)
+```
+
 ```text
 src/main/java/com/thapar/gpf/
-  config/        Google OIDC, session security and demo initialisation
-  controller/    authentication, student pages and admin pages
-  dto/           validated form records and aggregate views
-  exception/     controlled errors
-  model/         persistent entities and enums
-  repository/    Spring Data JPA repositories
-  service/       prediction, privacy, marks, polls, history and settings
+  GradePredictorApplication.java   starts everything (main method)
+
+  login/       WHO ARE YOU?
+    SecurityConfig.java         which pages need sign-in, which need ADMIN, logout, cookies
+    GoogleLoginConfig.java      Google client ID/secret (only when Google login is on)
+    GoogleLoginService.java     accepts only verified @thapar.edu Google accounts, creates the user
+    PasswordLoginService.java   email + password sign-in for the demo accounts
+    LoginController.java        the /login and /register pages
+
+  database/    WHAT IS STORED?
+    NeonDataSourceConfig.java   connects to PostgreSQL/Neon from DB_URL, POSTGRES_URL or PG* variables
+    StartupDataLoader.java      on startup: loads the 104 COE subjects, default cutoffs, demo users
+    tables/                     one class per database table (User, Subject, Mark, Poll, ...)
+    repository/                 the queries for each table (Spring Data writes the SQL)
+
+  backend/     WHAT HAPPENS?
+    service/                    the rules: grade prediction, marks locking, statistics, polls, unlocks
+    dto/                        small read-only records passed from the backend to the pages
+    exception/                  errors and the error page they turn into
+
+  ui/          WHAT DO YOU SEE?
+    StudentController.java      every /student/... page
+    AdminController.java        every /admin/... page
+    Pagination.java             splits long lists into pages
+    FormErrors.java             turns form mistakes into readable messages
+
 src/main/resources/
-  templates/     server-rendered Thymeleaf pages
-  static/        CSS and SVG assets
-src/test/        unit and integration tests
-References/      original UI screenshots
-docs/           legacy schema and migration notes
+  templates/   the HTML pages (Thymeleaf); layout.html has the shared navbar, footer and pager
+  static/      CSS and images
+  data/subjects.tsv   the COE curriculum, semesters 1 to 8 plus electives (104 subjects)
+  application*.properties   settings: default (H2 file), demo, postgres
+src/test/      unit and integration tests
+docs/          deployment guide, legacy schema and migration notes
+References/    original UI screenshots
 ```
+
+### Classes renamed in the reorganisation
+
+Only names and folders changed. Database table names, page addresses and behaviour are the same as before.
+
+| Old name | New name | Why |
+| --- | --- | --- |
+| `GpfApplication` | `GradePredictorApplication` | says what the app is |
+| `InstituteOidcUserService` | `login/GoogleLoginService` | it handles Google sign-in |
+| `GpfUserDetailsService` | `login/PasswordLoginService` | it handles password sign-in |
+| `AuthController` | `login/LoginController` | it serves the login and register pages |
+| `DataInitializer` | `database/StartupDataLoader` | it loads data at startup |
+| `HistoricalCutoff` (+ repository) | `FallbackCutoff` | the boundaries used before 100 submissions, not old records |
+| `CutoffHistoryService` | `PastYearCutoffService` | it manages `PastYearCutoff` records |
+| `EditRequest`, `EditStatus` (+ service, repository, admin view) | `UnlockRequest`, `UnlockStatus` | the pages call them unlock requests |
+| `CutoffsChanged` | `CutoffsChangedEvent` | it is an event |
+| `controller/Pages`, `controller/Messages` | `ui/Pagination`, `ui/FormErrors` | says what they do |
 
 The previous React/Prisma implementation remains available in Git history. Runtime data, secrets and build output are ignored by Git.

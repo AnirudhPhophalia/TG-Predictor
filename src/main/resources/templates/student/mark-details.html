@@ -16,36 +16,33 @@
     <div class="card">
         <h2>How was this predicted?</h2>
         <p th:if="${stats.relativeGradingActive()}">
-            Relative grading is active: <b th:text="${stats.totalResponses()}">100</b> students submitted, so your grade
-            comes from your percentile in the class.
+            Relative grading is active, so your grade comes from your percentile in the class.
         </p>
         <p th:unless="${stats.relativeGradingActive()}">
-            Only <b th:text="${stats.totalResponses()}">0</b> of the 100 submissions needed for relative grading are in,
-            so the admin's historical cutoffs are used instead.
+            Not enough classmates have submitted yet for relative grading, so the admin's historical cutoffs are used instead.
         </p>
         <p class="muted">Participation indicator:
-            <b th:text="${stats.confidenceLabel()} + ' (' + ${stats.confidencePercent()} + '%)'">Low</b>.
+            <b th:text="${stats.confidenceLabel()}">Low</b>.
             Marks below 35 are always an E.</p>
     </div>
 
     <div class="card">
         <h2>Class statistics</h2>
         <div class="table-scroll"><table>
-            <tr><th>Responses</th><td th:text="${stats.totalResponses()}">0</td>
-                <th>Average</th><td th:text="${#numbers.formatDecimal(stats.average(), 1, 2)}">0</td></tr>
-            <tr><th>Median</th><td th:text="${#numbers.formatDecimal(stats.median(), 1, 2)}">0</td>
-                <th>Mode</th><td th:text="${#numbers.formatDecimal(stats.mode(), 1, 2)}">0</td></tr>
+            <tr><th>Average</th><td th:text="${#numbers.formatDecimal(stats.average(), 1, 2)}">0</td>
+                <th>Median</th><td th:text="${#numbers.formatDecimal(stats.median(), 1, 2)}">0</td></tr>
+            <tr><th>Mode</th><td th:text="${#numbers.formatDecimal(stats.mode(), 1, 2)}">0</td>
+                <th></th><td></td></tr>
             <tr><th>Highest</th><td th:text="${stats.highest()}">0</td>
                 <th>Lowest</th><td th:text="${stats.lowest()}">0</td></tr>
             <tr><th>Standard deviation</th><td th:text="${#numbers.formatDecimal(stats.standardDeviation(), 1, 2)}">0</td>
                 <th>Pass / Fail</th><td th:text="${#numbers.formatDecimal(stats.passPercentage(), 1, 1)} + '% / ' + ${#numbers.formatDecimal(stats.failurePercentage(), 1, 1)} + '%'">0</td></tr>
         </table></div>
 
-        <h3>Score distribution</h3><p class="small muted">Response counts by score range. The distribution updates as the class contributes.</p>
+        <h3>Score distribution</h3><p class="small muted">Share of the class in each score range. The distribution updates as the class contributes.</p>
         <div class="bar-row" th:each="count, i : ${buckets}">
             <span class="label" th:text="${i.index * 10} + '-' + ${i.index * 10 + 10}">0-10</span>
             <div class="bar" th:style="'width:' + ${stats.totalResponses() == 0 ? 0 : count * 100.0 / stats.totalResponses()} + '%'"></div>
-            <span th:text="${count}">0</span>
         </div>
     </div>
 
