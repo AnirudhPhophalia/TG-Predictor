@@ -17,11 +17,8 @@ public class GradePredictionService {
     public static final int MIN_SUBMISSIONS_FOR_RELATIVE = 100;
     public static final double PASS_MARKS = 35.0;
 
-    // Admins only see combined numbers once at least this many students contributed.
-    // With 1 response the "average" would simply be that one student's marks.
     public static final int MIN_RESPONSES_FOR_ADMIN = 5;
 
-    /** Result of predicting one student's grade. */
     public record Prediction(Grade grade, double percentile, boolean relative) {
     }
 

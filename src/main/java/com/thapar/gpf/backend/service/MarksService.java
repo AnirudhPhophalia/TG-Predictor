@@ -15,11 +15,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Everything that touches individual marks. Every "read" method here takes the id of
- * the logged-in student, so one student can never load another student's marks.
- * This service must not be used from admin controllers.
- */
 @Service
 public class MarksService {
 
@@ -71,7 +66,7 @@ public class MarksService {
         settings.requireSubmissionsOpen();
         Double[] values = {request.totalMarks(), request.estMarks(), request.mstMarks(), request.quizMarks(),
                 request.assignmentMarks(), request.labMarks(), request.practicalMarks()};
-        double[] maximums = {100, 30, 40, 10, 20, 20, 20};
+        double[] maximums = {100, 40, 30, 10, 20, 20, 20};
         for (int i = 0; i < values.length; i++) {
             Double value = values[i];
             if ((i == 0 && value == null) || (value != null

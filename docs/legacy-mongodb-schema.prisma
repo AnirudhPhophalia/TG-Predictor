@@ -74,8 +74,8 @@ model Mark {
   totalMarks        Float     @default(0) // 0-100, used for prediction
   
   // Internal breakdown (optional, for analysis only)
-  estMarks          Float?    @default(0) // 0-30
-  mstMarks          Float?    @default(0) // 0-40
+  estMarks          Float?    @default(0) // 0-40
+  mstMarks          Float?    @default(0) // 0-30
   quizMarks         Float?    @default(0) // 0-10
   assignmentMarks   Float?    @default(0) // 0-20
   labMarks          Float?    @default(0) // 0-20

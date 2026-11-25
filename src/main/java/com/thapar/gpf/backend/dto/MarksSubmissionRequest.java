@@ -11,12 +11,12 @@ public record MarksSubmissionRequest(
         @DecimalMax(value = "100.0", message = "Total marks must be between 0 and 100")
         Double totalMarks,
 
-        @DecimalMin(value = "0.0", message = "EST must be between 0 and 30")
-        @DecimalMax(value = "30.0", message = "EST must be between 0 and 30")
+        @DecimalMin(value = "0.0", message = "EST must be between 0 and 40")
+        @DecimalMax(value = "40.0", message = "EST must be between 0 and 40")
         Double estMarks,
 
-        @DecimalMin(value = "0.0", message = "MST must be between 0 and 40")
-        @DecimalMax(value = "40.0", message = "MST must be between 0 and 40")
+        @DecimalMin(value = "0.0", message = "MST must be between 0 and 30")
+        @DecimalMax(value = "30.0", message = "MST must be between 0 and 30")
         Double mstMarks,
 
         @DecimalMin(value = "0.0", message = "Quizzes must be between 0 and 10")

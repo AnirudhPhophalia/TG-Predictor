@@ -17,10 +17,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Admin-facing numbers. Everything returned here is a count, an average or a
- * timestamp: nothing that could be traced back to one student's marks.
- */
 @Service
 public class AnalyticsService {
 

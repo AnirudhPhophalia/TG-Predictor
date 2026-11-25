@@ -59,11 +59,13 @@ class PrivacyAndFlowTest {
     @Order(1)
     void studentSubmitsOnceAndSecondSubmitIsRejectedWith400() throws Exception {
         mvc.perform(post("/student/submit/" + subjectId()).with(user("aarav@thapar.edu").roles("STUDENT")).with(csrf())
-                        .param("totalMarks", SECRET).param("mstMarks", "30"))
+                        .param("totalMarks", SECRET).param("estMarks", "40").param("mstMarks", "30"))
                 .andExpect(status().is3xxRedirection());
 
         Mark mark = markRepository.findByUserIdAndSubjectId(userId("aarav@thapar.edu"), subjectId()).orElseThrow();
         assertTrue(mark.isLocked());
+        assertEquals(40.0, mark.getEstMarks());
+        assertEquals(30.0, mark.getMstMarks());
         assertEquals("B", mark.getPredictedGrade().getLabel());   // 73.37 with default cutoffs (>= 65)
 
         mvc.perform(post("/student/submit/" + subjectId()).with(user("aarav@thapar.edu").roles("STUDENT")).with(csrf())
@@ -166,7 +168,10 @@ class PrivacyAndFlowTest {
                     .andExpect(view().name("student/submit"));
         }
         mvc.perform(post("/student/submit/" + subjectId()).with(user("kabir@thapar.edu").roles("STUDENT")).with(csrf())
-                        .param("totalMarks", "60").param("estMarks", "31"))
+                        .param("totalMarks", "60").param("estMarks", "41").param("mstMarks", "30"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/student/submit/" + subjectId()).with(user("kabir@thapar.edu").roles("STUDENT")).with(csrf())
+                        .param("totalMarks", "60").param("estMarks", "40").param("mstMarks", "31"))
                 .andExpect(status().isOk());
         assertTrue(markRepository.findByUserIdAndSubjectId(userId("kabir@thapar.edu"), subjectId()).isEmpty());
     }
